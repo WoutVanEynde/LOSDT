@@ -1,0 +1,6 @@
+[client]
+toolbarMode = "viewer"
+
+[theme]
+primaryColor = "1FABD5"
+backgroundColor = "white"
