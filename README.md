@@ -35,7 +35,6 @@ In order to run the application with conda, use:
 conda activate LOSDT
 
 streamlit run Home.py
-
 ```
 
 # Modules
