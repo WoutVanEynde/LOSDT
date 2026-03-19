@@ -1,8 +1,18 @@
 import os
 import sys
+import warnings
 
 # Force OpenMM to use single-threaded CPU platform to prevent thread conflicts with multiprocessing https://github.com/openmm/openmm/issues/4424
 os.environ["OPENMM_CPU_THREADS"] = "1"
+os.environ['OPENMM_DEFAULT_PLATFORM'] = 'CPU'
+
+warnings.simplefilter("ignore", category=FutureWarning)
+
+# PyInstaller imports
+if getattr(sys, 'frozen', False):
+    bundle_dir = sys._MEIPASS
+    os.environ['PATH'] = bundle_dir + os.pathsep + os.environ.get('PATH', '')
+    os.environ['LD_LIBRARY_PATH'] = bundle_dir + os.pathsep + os.environ.get('LD_LIBRARY_PATH', '')
 
 import tempfile
 import traceback
@@ -11,8 +21,7 @@ import json
 import argparse
 from pathlib import Path
 from typing import Optional, List, Tuple, Set, Dict
-import multiprocessing
-from multiprocessing import cpu_count
+from multiprocessing import Pool, cpu_count
 import numpy as np
 from rdkit import Chem
 from rdkit.Chem import AllChem, rdDetermineBonds, rdFMCS
@@ -24,14 +33,21 @@ from openff.toolkit import Molecule
 from openff.units import unit as openff_unit
 from openmm import CustomExternalForce, LangevinMiddleIntegrator, unit#, Platform
 from pdbtools import pdb_selresname, pdb_tocif
-from dimorphite_dl import protonate_smiles
 
-if getattr(sys, 'frozen', False): #PyInstaller imports
-    bundle_dir = sys._MEIPASS
-    # Add to PATH so xtb executable can be found
-    os.environ['PATH'] = bundle_dir + os.pathsep + os.environ.get('PATH', '')
-    # Add to LD_LIBRARY_PATH so shared libraries can be found
-    os.environ['LD_LIBRARY_PATH'] = bundle_dir + os.pathsep + os.environ.get('LD_LIBRARY_PATH', '')
+# Add dimorphite_dl to path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'static', 'third_party_software', 'dimorphite_dl')))
+
+from dimorphite_dl.protonate.run import protonate_smiles
+
+# Configure logging for multiprocessing
+def setup_logging():
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(processName)s - %(levelname)s - %(message)s'
+    )
+    return logging.getLogger(__name__)
+
+logger = setup_logging()
 
 # ============================================================================
 # DEFAULT PARAMETERS
@@ -51,16 +67,6 @@ STANDARD_AMINO_ACIDS = {
 }
 
 WATER_NAMES = {'HOH', 'WAT', 'TIP3', 'SOL', 'OPC'}
-
-# Configure logging
-def setup_logging():
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(levelname)s - %(message)s'
-    )
-    return logging.getLogger(__name__)
-
-logger = setup_logging()
 
 def fix_oxygen_formal_charges(mol):
     # FIX OXYGEN FORMAL CHARGES, used to be problem in NAD+ that was deprotonated.
@@ -154,17 +160,17 @@ def extract_ligands_from_pdb(pdb_path: Path, protonation: bool, ligand_residue_n
                     logger.info(f"Ligand {ligand_name} protonated with SMILES: {protonated_smiles}!")
                     mol = protonated
                                                     
-                # Compute MMFF partial charges
-                mmff = AllChem.MMFFGetMoleculeProperties(mol)
+                # Compute MMFF partial charges; not needed anymore since Sage 2.3.0
+                #mmff = AllChem.MMFFGetMoleculeProperties(mol)
                 
-                # Extract charges (one per atom, in atom order)
-                charges = [mmff.GetMMFFPartialCharge(i) for i in range(mol.GetNumAtoms())]
+                # Extract charges (one per atom, in atom order); not needed anymore since Sage 2.3.0
+                #charges = [mmff.GetMMFFPartialCharge(i) for i in range(mol.GetNumAtoms())]
 
-                # Format as space-separated string
-                charges_str = " ".join(f"{charge:.6f}" for charge in charges)
+                # Format as space-separated string; not needed anymore since Sage 2.3.0
+                #charges_str = " ".join(f"{charge:.6f}" for charge in charges)
                 
                 # Set charge and name as molecular property
-                mol.SetProp("atom.dprop.PartialCharge", charges_str)
+                #mol.SetProp("atom.dprop.PartialCharge", charges_str); not needed anymore since Sage 2.3.0
                 mol.SetProp("_Name", ligand_name)
                 
                 # Convert to temp sdf file and then to openff molecule
@@ -176,7 +182,7 @@ def extract_ligands_from_pdb(pdb_path: Path, protonation: bool, ligand_residue_n
                 
                 ligand_molecules.append(openff_mol)
                 
-                logger.info(f"Instance {idx+1}: {mol.GetNumAtoms()} atoms, total charge: {sum(charges):.3f}")
+                #logger.info(f"Instance {idx+1}: {mol.GetNumAtoms()} atoms, total charge: {sum(charges):.3f}"); not needed anymore since Sage 2.3.0
                 
             except Exception as e:
                 logger.error(f"Failed to extract ligand {ligand_name} instance {idx+1}: {str(e)}")
@@ -429,7 +435,7 @@ def run_constrained_em_single(
 
         system_generator = SystemGenerator(
             forcefields=['amber19/protein.ff19SB.xml', 'amber19/DNA.OL21.xml', 'amber19/lipid21.xml', 'amber19/opc3.xml'], # IMPLICIT WATER MODEL ADDED https://github.com/openmm/openmm/issues/3364
-            small_molecule_forcefield='openff-2.2.0',
+            small_molecule_forcefield='openff-2.3.0',
             molecules=ligand_molecules,
             cache=str(output_dir / f'{output_prefix}_db.json')
         )
@@ -498,16 +504,6 @@ def run_constrained_em_single(
         restraint.addPerParticleParameter("x0")
         restraint.addPerParticleParameter("y0")
         restraint.addPerParticleParameter("z0")
-        
-        """
-        CARE TETHER
-        restraint2 = CustomExternalForce("k*((x-x0)^2 + (y-y0)^2 + (z-z0)^2)")
-        system.addForce(restraint2)        
-        restraint2.addGlobalParameter('k', restraint_strength * unit.kilojoules_per_mole / unit.nanometer**2)
-        restraint2.addPerParticleParameter("x0")
-        restraint2.addPerParticleParameter("y0")
-        restraint2.addPerParticleParameter("z0")        
-        """
         
         for atom in modeller.topology.atoms():
             if atom.index not in mobile_atoms:
@@ -619,7 +615,7 @@ def constrained_em_main(
     temperature: float = DEFAULT_TEMPERATURE,
     timestep: float = DEFAULT_TIMESTEP,
     verbose: bool = True,
-    n_workers: Optional[int] = None
+    processes: Optional[int] = None
 ) -> List[dict]:
     """
     Run constrained energy minimization on multiple protein-ligand complexes in parallel.
@@ -638,10 +634,10 @@ def constrained_em_main(
     logger.info(f"Found {len(pdb_files)} PDB files")
     
     # Determine number of workers
-    if n_workers is None:
-        n_workers = max(1, cpu_count() - 4)
+    if processes is None:
+        processes = max(1, cpu_count() - 4)
     
-    logger.info(f"Using {n_workers} parallel workers")
+    logger.info(f"Using {processes} parallel workers")
     
     # Package parameters
     params = {
@@ -663,7 +659,7 @@ def constrained_em_main(
     logger.info("STARTING PARALLEL PROCESSING")
     logger.info("=" * 60)
     
-    with multiprocessing.get_context('spawn').Pool(processes=n_workers) as pool:
+    with Pool(processes=processes) as pool:
         results = pool.map(process_single_pdb_wrapper, args_list)
     
     # Summary
@@ -705,15 +701,15 @@ def main(args):
             temperature=args.temperature,
             timestep=args.timestep,
             verbose=not args.quiet,
-            n_workers=args.processes
+            processes=args.processes
         )
         return 0
     except Exception:
         return 1
 
-if __name__ == "__main__":    
+if __name__ == "__main__":   
     parser = argparse.ArgumentParser(
-        description='Constrained energy minimization for protein-ligand complexes (PARALLELIZED).',
+        description='Constrained energy minimization for protein-ligand complexes.',
         formatter_class=argparse.RawDescriptionHelpFormatter
     )  
     parser.add_argument('--pdb', '-p', required=True, type=str,
@@ -735,7 +731,7 @@ if __name__ == "__main__":
     parser.add_argument('--timestep', '-ts', type=float, default=DEFAULT_TIMESTEP,
                        help='Integration timestep in picoseconds.')
     parser.add_argument('--processes', type=int, default=None,
-                       help='Number of parallel workers (default: cpu_count - 4).')
+                       help='Number of processes to use for parallel processing (default: cpu_count - 4).')
     parser.add_argument('--quiet', '-q', action='store_true',
                        help='Suppress verbose output.')
     

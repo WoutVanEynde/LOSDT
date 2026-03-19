@@ -1,16 +1,7 @@
-"""
-LOSDT - Lead Optimization Structure-based Drug Design Tool
-A Streamlit application with full molecular editing and 3D visualization.
-
-This enhanced version includes:
-- Streamlit-Ketcher for molecular editing
-- Streamlit-Molstar for 3D structure visualization
-- All original ADMET prediction and analysis features
-"""
-
 import os
-import signal
 import sys
+import multiprocessing
+import signal
 import subprocess
 import shutil
 import uuid
@@ -53,8 +44,14 @@ class Config:
     RADIAL_PLOTS_DIR = 'radial_plots'
     
     # Reaction databases
-    REACTIONS = 'reactions_validated.csv'
+    #REACTIONS = 'reactions_validated.csv'
+    #REACTIONS = 'reactions_validated_mapped.csv'
     #REACTIONS = 'reactions_to_validate.csv'
+    #REACTIONS = 'reactions_validated_mapped_full.csv'
+    #REACTIONS = 'reactions_validated_mapped_full_reversed.csv'
+    #REACTIONS = 'reactions_validated_mapped_phenyl_full.csv'
+    #REACTIONS = 'reactions_validated_mapped_phenyl_full_reversed.csv'
+    REACTIONS = 'reactions_validated_mapped_full_all_combined.csv'
     REACTANTS = 'reactants.txt'
     
     # File naming conventions
@@ -104,7 +101,7 @@ if 'current_structure_index' not in st.session_state:
 def allowed_file(filename: str) -> bool:
     """Validate file extension against whitelist."""
     return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in Config.ALLOWED_EXTENSIONS
+        filename.rsplit('.', 1)[1].lower() in Config.ALLOWED_EXTENSIONS
 
 def is_valid_smiles(smiles: str) -> bool:
     """
@@ -232,8 +229,8 @@ def extract_smiles_from_pdb(pdb_file_path: Path) -> str:
         cleanup_temp_file(temp_ligand_path)
 
 def extract_ligand_from_pdb(pdb_file_path: Path, 
-                           ligand_sdf_path: Path,
-                           ligand_pdb_path: Path) -> None:
+                        ligand_sdf_path: Path,
+                        ligand_pdb_path: Path) -> None:
     """
     Extract ligand from PDB file and save in both SDF and PDB formats.
     """
@@ -286,9 +283,9 @@ def predict_admet_properties(smiles: str, output_csv_path: Path, protonation: bo
         raise RuntimeError(f"ADMET prediction failed: {str(e)}")
 
 def align_molecules(template_molecule_path: Path, 
-                   aligned_molecules_dir: Path, 
-                   derivatives_to_align_path: Path,
-                   SMILES_column: str) -> None:
+                aligned_molecules_dir: Path, 
+                derivatives_to_align_path: Path,
+                SMILES_column: str) -> None:
     """Run molecular alignment using direct import."""
     try:
         ensure_templates_in_path()
@@ -336,14 +333,15 @@ def constrained_em_complexes(pdb_dir: Path,
         
         constrained_em_main(
             pdb_dir=str(pdb_dir),
-            output_dir=str(em_complexes_dir)
+            output_dir=str(em_complexes_dir),
+            protonation=False
         )
         
     except Exception as e:
         raise RuntimeError(f"Complex creation failed: {str(e)}")
 
 def plot_radials(results_csv_path: Path, 
-                       radial_plots_dir: Path) -> None:
+                    radial_plots_dir: Path) -> None:
     """Generate radial plots using direct import."""
     try:
         ensure_templates_in_path()
@@ -378,8 +376,8 @@ def zip_files(file_paths: List[Path], zip_path: Path) -> None:
 # =============================================================================
 
 def process_input_data(smiles_input: Optional[str], 
-                      pdb_file, 
-                      session_folder: Path) -> Tuple[str, Optional[Path]]:
+                    pdb_file, 
+                    session_folder: Path) -> Tuple[str, Optional[Path]]:
     """
     Validate and process input (PDB file and/or SMILES).
     
@@ -411,10 +409,10 @@ def process_input_data(smiles_input: Optional[str],
     return smiles_input, pdb_file_path
 
 def run_molecular_pipeline(smiles_string: str, 
-                          pdb_file_path: Optional[Path], 
-                          session_folder: Path,
-                          energy_minimization: bool,
-                          protonation: bool) -> Dict:
+                        pdb_file_path: Optional[Path], 
+                        session_folder: Path,
+                        energy_minimization: bool,
+                        protonation: bool) -> Dict:
     """
     Execute complete molecular processing pipeline.
     
@@ -533,13 +531,13 @@ def display_results(session_folder: Path, smiles_string: str, has_pdb: bool):
                 display_cols = [col for col in df.columns if col not in ['molecular_weight_RDkit','TPSA_RDKit','NR-AR-LBD','NR-AR','NR-AhR','NR-Aromatase','NR-ER-LBD','NR-ER','NR-PPAR-gamma','SR-ARE','SR-ATAD5','SR-HSE','SR-MMP','SR-p53','NR-AR-LBD_drugbank_approved_percentile','NR-AR_drugbank_approved_percentile','NR-AhR_drugbank_approved_percentile','NR-Aromatase_drugbank_approved_percentile','NR-ER-LBD_drugbank_approved_percentile','NR-ER_drugbank_approved_percentile','NR-PPAR-gamma_drugbank_approved_percentile','SR-ARE_drugbank_approved_percentile','SR-ATAD5_drugbank_approved_percentile','SR-HSE_drugbank_approved_percentile','SR-MMP_drugbank_approved_percentile','SR-p53_drugbank_approved_percentile']]
                 display_df = df[display_cols].copy()
                 display_df['structure_image'] = display_df['product_SMILES'].apply(smiles_to_base64)
+                if "Protonated SMILES" in df.columns:
+                    display_df['structure_image'] = display_df['Protonated SMILES'].apply(smiles_to_base64)
                 display_df['reaction_name'] = display_df['reaction_name'].str.replace(r'[{}]', '', regex=True)
                 st.dataframe(display_df.style.map(color_lipinski, subset=['Lipinski']), column_config={'structure_image': st.column_config.ImageColumn("Structure",width="medium", pinned=True),
                                                 'reaction_name': st.column_config.TextColumn("Reaction name", pinned=True),
                                                 'reference': st.column_config.LinkColumn("Reference", pinned=True, width='small'),
                                                 'product_SMILES': st.column_config.TextColumn("SMILES"),
-                                                #'molecular_weight_RDkit': st.column_config.NumberColumn("Molecular weight RDKit",format="%.2f"),
-                                                #'TPSA_RDKit': st.column_config.NumberColumn("TPSA RDKit",format="%.2f"),
                                                 'tanimoto_similarity_input_SMILES': st.column_config.ProgressColumn("Tanimoto similarity",format="%.2f",min_value=0.0,max_value=1.0),
                                                 'molecular_weight': st.column_config.NumberColumn("Molecular weight",format="%.2f"),
                                                 'logP': st.column_config.NumberColumn("LogP",format="%.2f"),
@@ -578,14 +576,13 @@ def display_results(session_folder: Path, smiles_string: str, has_pdb: bool):
                                                 'PPBR_AZ': st.column_config.NumberColumn("Plasma Protein Binding Rate (AstraZeneca)",format="%.2f"),
                                                 'Solubility_AqSolDB': st.column_config.NumberColumn("Solubility (AqSolDB)",format="%.2f"),
                                                 'VDss_Lombardo': st.column_config.NumberColumn("Volumn of distribution at steady state (Lombardo)",format="%.2f"),
-                                                
                                                 'molecular_weight_drugbank_approved_percentile': st.column_config.ProgressColumn("Molecular weight drugbank approved percentile",format="%.2f",min_value=0.0,max_value=100.0),
                                                 'logP_drugbank_approved_percentile': st.column_config.ProgressColumn("LogP drugbank approved percentile",format="%.2f",min_value=0.0,max_value=100.0),
-                                                'hydrogen_bond_acceptors_drugbank_approved_percentile': st.column_config.ProgressColumn("HBA",min_value=0.0,max_value=100.0),
-                                                'hydrogen_bond_donors_drugbank_approved_percentile': st.column_config.ProgressColumn("HBD",min_value=0.0,max_value=100.0),
-                                                'Lipinski_drugbank_approved_percentile': st.column_config.ProgressColumn("Lipinski",min_value=0.0,max_value=100.0),
-                                                'QED_drugbank_approved_percentile': st.column_config.ProgressColumn("QED",min_value=0.0,max_value=100.0),
-                                                'stereo_centers_drugbank_approved_percentile': st.column_config.ProgressColumn("Stereo centers",min_value=0.0,max_value=100.0),
+                                                'hydrogen_bond_acceptors_drugbank_approved_percentile': st.column_config.ProgressColumn("HBA drugbank approved percentile",format="%.2f",min_value=0.0,max_value=100.0),
+                                                'hydrogen_bond_donors_drugbank_approved_percentile': st.column_config.ProgressColumn("HBD drugbank approved percentile",format="%.2f",min_value=0.0,max_value=100.0),
+                                                'Lipinski_drugbank_approved_percentile': st.column_config.ProgressColumn("Lipinski drugbank approved percentile",format="%.2f",min_value=0.0,max_value=100.0),
+                                                'QED_drugbank_approved_percentile': st.column_config.ProgressColumn("QED drugbank approved percentile",format="%.2f",min_value=0.0,max_value=100.0),
+                                                'stereo_centers_drugbank_approved_percentile': st.column_config.ProgressColumn("Stereo centers drugbank approved percentile",format="%.2f",min_value=0.0,max_value=100.0),
                                                 'tpsa_drugbank_approved_percentile': st.column_config.ProgressColumn("TPSA drugbank approved percentile",format="%.2f",min_value=0.0,max_value=100.0),
                                                 'AMES_drugbank_approved_percentile': st.column_config.ProgressColumn("Mutagenicity (AMES) drugbank approved percentile",format="%.2f",min_value=0.0,max_value=100.0),
                                                 'BBB_Martins_drugbank_approved_percentile': st.column_config.ProgressColumn("BBB permeability (Martins) drugbank approved percentile",format="%.2f",min_value=0.0,max_value=100.0),
@@ -618,7 +615,7 @@ def display_results(session_folder: Path, smiles_string: str, has_pdb: bool):
                                                 'VDss_Lombardo_drugbank_approved_percentile': st.column_config.ProgressColumn("Volumn of distribution at steady state (Lombardo) drugbank approved percentile",format="%.2f",max_value=100.0),
                                                 'Volumetric shape and ESP similarity score': st.column_config.ProgressColumn(format="%.2f",max_value=1.0, pinned=True) if 'Volumetric shape and ESP similarity score' in display_df else None,
                                                                                                 
-                                               }, width="stretch", height=500, row_height=100)
+                                            }, width="stretch", height=500, row_height=100)
                 
             else:
                 st.info("No radial plots available.")
@@ -637,7 +634,7 @@ def display_results(session_folder: Path, smiles_string: str, has_pdb: bool):
                 
                     if complex_files:
                         # Display current structure
-                        current_structure = complex_files[st.slider(label="Select 3D structure", min_value=0, max_value=len(complex_files)- 1)]
+                        current_structure = complex_files[st.slider(label="Select 3D structure", min_value=0, max_value=len(complex_files)- 1, key=1)]
                     
                         # Display with Molstar
                         st_molstar(current_structure,height=500,key=f"molstar_{st.session_state.current_structure_index}")
@@ -646,11 +643,11 @@ def display_results(session_folder: Path, smiles_string: str, has_pdb: bool):
                 
             with tab5:
                 if em_complexes_dir.exists():
-                    complex_em_files = sorted(list(em_complexes_dir.glob('*_minimized.cif')))
+                    complex_em_files = sorted(list(em_complexes_dir.glob('*_minimized.pdb')))
 
                     if complex_em_files:
                         # Display current structure
-                        current_structure = complex_em_files[st.slider(label="Select 3D structure", min_value=0, max_value=len(complex_files)- 1)]
+                        current_structure = complex_em_files[st.slider(label="Select 3D structure", min_value=0, max_value=len(complex_files)- 1, key=2)]
                     
                         # Display with Molstar
                         st_molstar(current_structure,height=500,key=f"molstar_EM_{st.session_state.current_structure_index}")
@@ -666,7 +663,7 @@ def display_results(session_folder: Path, smiles_string: str, has_pdb: bool):
         csv_path = session_folder / Config.RESULTS_CSV_NAME
         if csv_path.exists():
             st.markdown("Download the ADMET properties of the derivatives. More information on the different properties: "
-                       "[ADMET Benchmark Group](https://tdcommons.ai/benchmark/admet_group/overview)")
+                    "[ADMET Benchmark Group](https://tdcommons.ai/benchmark/admet_group/overview)")
             
             with open(csv_path, 'rb') as f:
                 st.download_button(
@@ -783,19 +780,13 @@ def main():
             if molecule_data:
                 smiles_from_editor = molecule_data
                 st.session_state.ketcher_smiles = smiles_from_editor
-                  
+                
                 if smiles_from_editor and is_valid_smiles(smiles_from_editor):
                     st.success(f"Valid structure: `{smiles_from_editor}`")
                     smiles_input = smiles_from_editor
                 elif smiles_from_editor:
                     st.error("Invalid molecular structure")
-
-        
-        # Get final SMILES input
-        if not smiles_input:
-            # Check if we have SMILES from text input
-            if 'smiles_text_input' in locals() and smiles_text_input:
-                smiles_input = smiles_text_input
+            protonation_button = st.checkbox("Protonate the ligand(s) using Dimorphite-DL.", key=2)
         
         # Submission
         col1, col2, col3 = st.columns([1, 2, 1])

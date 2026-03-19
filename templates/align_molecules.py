@@ -4,16 +4,18 @@ import sys
 # The xtb quantum chemistry software uses OpenMP internally for parallelization. When combined: Python's multiprocessing.Pool (process-level parallelism), xtb's internal OpenMP (thread-level parallelism), and Intel's KMP OpenMP runtime, nested conflicts emerge that deadlocks everything. Solution is to force threads to 1 as we are only scoring anyways.
 os.environ["OMP_NUM_THREADS"] = "1"
 os.environ["MKL_NUM_THREADS"] = "1"
-os.environ["OPENBLAS_NUM_THREADS"] = "1"
-os.environ["NUMEXPR_NUM_THREADS"] = "1"
-os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
+
+# PyInstaller imports
+if getattr(sys, 'frozen', False):
+    bundle_dir = sys._MEIPASS
+    os.environ['PATH'] = bundle_dir + os.pathsep + os.environ.get('PATH', '')
+    os.environ['LD_LIBRARY_PATH'] = bundle_dir + os.pathsep + os.environ.get('LD_LIBRARY_PATH', '')
 
 import time
 import logging
 import traceback
 import argparse
 import concurrent.futures
-import multiprocessing as mp
 from pathlib import Path
 from functools import partial
 from typing import List, Tuple, Dict, Optional
@@ -22,13 +24,6 @@ import pandas as pd
 from rdkit import Chem, RDLogger
 from rdkit.Chem import AllChem, rdmolfiles, rdFMCS
 RDLogger.DisableLog('rdApp.*')
-
-if getattr(sys, 'frozen', False): #PyInstaller imports
-    bundle_dir = sys._MEIPASS
-    # Add to PATH so xtb executable can be found
-    os.environ['PATH'] = bundle_dir + os.pathsep + os.environ.get('PATH', '')
-    # Add to LD_LIBRARY_PATH so shared libraries can be found
-    os.environ['LD_LIBRARY_PATH'] = bundle_dir + os.pathsep + os.environ.get('LD_LIBRARY_PATH', '')
 
 # Add shepherd score to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'static', 'third_party_software', 'shepherd-score')))
@@ -676,7 +671,7 @@ def align_molecules_parallel(smiles_list: List[str], template: Chem.Mol, n_proce
     logger.info(f"Starting parallel alignment of {len(smiles_list)} molecules")
     
     if n_processes is None:
-        n_processes = min(cpu_count(), len(smiles_list))
+        n_processes = max(1, cpu_count() - 4)
     
     logger.info(f"Using {n_processes} processes for alignment")
     
@@ -925,9 +920,6 @@ def main(args) -> int:
         return 1
 
 if __name__ == "__main__":
-    # Important for multiprocessing on Windows
-    mp.set_start_method('spawn', force=True)
-    
     parser = argparse.ArgumentParser(
         description="Align molecules to a template and score volumetric and electrostatic complementarity using ShEPhERD with parallelization options.",
         formatter_class=argparse.RawDescriptionHelpFormatter
@@ -942,9 +934,9 @@ if __name__ == "__main__":
                        help="Name of SMILES column (default: product_SMILES)")                           
     parser.add_argument("--method", "-m", type=str, choices=['serial', 'parallel'], 
                        default='parallel',
-                       help="Processing method: serial (original) or parallel (two-phase). Default: parallel")
+                       help="Processing method: serial (original) or parallel (two-phase) (default: parallel).")
     parser.add_argument("--processes", "-p", type=int, default=None,
-                       help="Number of processes to use for parallel processing (default: auto-detect)")                   
+                       help="Number of processes to use for parallel processing (default: cpu_count - 4).")                   
     
     args = parser.parse_args()
     exit(main(args))

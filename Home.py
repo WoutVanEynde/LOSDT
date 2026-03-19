@@ -1,13 +1,3 @@
-"""
-LOSDT - Lead Optimization Structure-based Drug Design Tool
-A Streamlit application with full molecular editing and 3D visualization.
-
-This enhanced version includes:
-- Streamlit-Ketcher for molecular editing
-- Streamlit-Molstar for 3D structure visualization
-- All original ADMET prediction and analysis features
-"""
-
 from streamlit_ketcher import st_ketcher
 from streamlit_molstar import st_molstar
 import streamlit as st
