@@ -1,0 +1,30 @@
+**/.DS_Store
+__pycache__
+.venv
+.env
+dist/
+**/_version.py
+
+# Jupyter Notebook
+**/.ipynb_checkpoints
+
+# IDE settings
+.vscode/
+.idea/
+
+public/
+
+.cache
+
+node_modules
+package-lock.json
+package.json
+
+# pixi environments
+.pixi
+*.egg-info
+
+# coverage
+coverage.xml
+report.xml
+.coverage
