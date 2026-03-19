@@ -1,14 +1,6 @@
-"""
-LOSDT - Lead Optimization Structure-based Drug Design Tool
-A Streamlit application with full molecular editing and 3D visualization.
-
-This enhanced version includes:
-- Streamlit-Ketcher for molecular editing
-- Streamlit-Molstar for 3D structure visualization
-- All original ADMET prediction and analysis features
-"""
 import os
 import sys
+import multiprocessing
 import subprocess
 import shutil
 import uuid
@@ -77,7 +69,7 @@ if 'current_structure_index' not in st.session_state:
 def allowed_file(filename: str) -> bool:
     """Validate file extension against whitelist."""
     return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in Config.ALLOWED_EXTENSIONS
+        filename.rsplit('.', 1)[1].lower() in Config.ALLOWED_EXTENSIONS
 
 def get_resource_path(relative_path):
     """Get absolute path to resource, works for dev and PyInstaller"""
@@ -200,8 +192,8 @@ def zip_files(file_paths: List[Path], zip_path: Path) -> None:
                         zipf.write(file_path, arcname)        
         
 def run_molecular_pipeline(complexes_dir: Path, 
-                          session_folder: Path,
-                          protonation: bool) -> Dict:
+                        session_folder: Path,
+                        protonation: bool) -> Dict:
     """
     Execute complete molecular processing pipeline.
     

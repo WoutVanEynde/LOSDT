@@ -26,7 +26,7 @@ import streamlit as st
 # =============================================================================
 
 st.set_page_config(
-    page_title="MCSAlign - Maximum Commen Substructure Alignment",
+    page_title="MCSAlign - Maximum Common Substructure Alignment",
     page_icon="static/favicon.ico",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -235,7 +235,7 @@ def main():
     # Header
     col1, col2 = st.columns([8, 1], vertical_alignment="bottom")
     with col1:
-        st.markdown("# MCSAlign - Maximum Commen Substructure Alignment")
+        st.markdown("# MCSAlign - Maximum Common Substructure Alignment")
     with col2:
         exit_app = st.button("**SHUT DOWN APP**", width="stretch", type="primary")
         if exit_app:
