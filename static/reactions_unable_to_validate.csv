@@ -1,7 +1,0 @@
-reaction_name,smirks,reference
-{CF3 to SF5},"[*:1]C(F)(F)F>>[*:1]S(F)(F)(F)(F)F","https://doi.org/10.1002/cmdc.201700356"
-{Tert-butyl to SF5},"[*:1]C([CH3])([CH3])([CH3])>>[*:1]S(F)(F)(F)(F)F","https://doi.org/10.1002/cmdc.201700356"
-{Nitro to SF5},"[*:1]([N+](=O)[O-])>>[*:1]S(F)(F)(F)(F)F","https://doi.org/10.1002/cmdc.201700356"
-{Chlorine to SF5},"[*:1][Cl]>>[*:1]S(F)(F)(F)(F)F","https://doi.org/10.1002/cmdc.201700356"
-{Bromine to SF5},"[*:1][Br]>>[*:1]S(F)(F)(F)(F)F","https://doi.org/10.1002/cmdc.201700356"
-{Iodine to SF5},"[*:1][I]>>[*:1]S(F)(F)(F)(F)F","https://doi.org/10.1002/cmdc.201700356"
