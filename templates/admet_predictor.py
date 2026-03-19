@@ -1,20 +1,34 @@
 import os
-import pandas as pd
-import json
-import argparse
-import logging
+import sys
 import warnings
-import traceback
-from dimorphite_dl import protonate_smiles
+
+# Only use CPU; otherwise GPU overhead
+os.environ['CUDA_VISIBLE_DEVICES'] = ""
 
 # Suppress RDKit warnings about boost converters
 warnings.filterwarnings("ignore", message=".*to-Python converter.*already registered.*")
 
+# PyInstaller imports
+if getattr(sys, 'frozen', False):
+    bundle_dir = sys._MEIPASS
+    os.environ['PATH'] = bundle_dir + os.pathsep + os.environ.get('PATH', '')
+    os.environ['LD_LIBRARY_PATH'] = bundle_dir + os.pathsep + os.environ.get('LD_LIBRARY_PATH', '')
+
+import pandas as pd
+import json
+import argparse
+import logging
+import traceback
 from pathlib import Path
 from typing import List, Dict, Any, Tuple
 from rdkit import Chem
 from rdkit.Chem import AllChem, Descriptors, DataStructs
 from admet_ai import ADMETModel
+
+# Add dimorphite_dl to path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'static', 'third_party_software', 'dimorphite_dl')))
+
+from dimorphite_dl.protonate.run import protonate_smiles
 
 # Configure logging for multiprocessing
 def setup_logging():
@@ -25,9 +39,6 @@ def setup_logging():
     return logging.getLogger(__name__)
 
 logger = setup_logging()
-
-# Only use CPU; otherwise GPU overhead
-os.environ['CUDA_VISIBLE_DEVICES'] = ""
 
 # =============================================================================
 # CONFIGURATION
@@ -234,7 +245,7 @@ def create_input_molecule_entry(input_smiles: str,
     """Create entry for input molecule with ADMET properties."""
     if protonation is True:
         protonated_SMILES = protonate_smiles(input_smiles, ph_min=7.0, ph_max=7.4, precision=1.0, max_variants=1)
-        input_smiles = protonated_SMILES
+        input_smiles = protonated_SMILES[0]
         
     input_admet = model.predict(smiles=input_smiles)
     

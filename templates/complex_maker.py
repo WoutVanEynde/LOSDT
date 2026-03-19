@@ -1,5 +1,12 @@
-#!/usr/bin/env python3
 import os
+import sys
+
+# PyInstaller imports
+if getattr(sys, 'frozen', False):
+    bundle_dir = sys._MEIPASS
+    os.environ['PATH'] = bundle_dir + os.pathsep + os.environ.get('PATH', '')
+    os.environ['LD_LIBRARY_PATH'] = bundle_dir + os.pathsep + os.environ.get('LD_LIBRARY_PATH', '')
+
 import argparse
 import subprocess
 import logging
@@ -7,9 +14,15 @@ import traceback
 from rdkit import Chem
 from pdbtools import pdb_merge, pdb_tocif
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# Configure logging for multiprocessing
+def setup_logging():
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(processName)s - %(levelname)s - %(message)s'
+    )
+    return logging.getLogger(__name__)
+
+logger = setup_logging()
 
 def sdf_to_pdb(sdf_path, pdb_path):
     """Convert SDF to PDB using RDKit."""
