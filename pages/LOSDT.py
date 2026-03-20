@@ -352,7 +352,6 @@ def plot_radials(results_csv_path: Path,
         create_radial_plots_main(
             derivatives=str(results_csv_path),
             output=str(radial_plots_dir),
-            method='futures',
             processes=None
         )
     except Exception as e:
