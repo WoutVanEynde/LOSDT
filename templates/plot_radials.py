@@ -11,7 +11,6 @@ import logging
 from multiprocessing import Pool, cpu_count
 from functools import partial
 import time
-from concurrent.futures import ProcessPoolExecutor, as_completed
 import multiprocessing as mp
 
 from rdkit import Chem
@@ -395,9 +394,9 @@ def process_single_reaction(args):
         error_msg = f"Error processing reaction {row_data.get('index', 'unknown')} ({row_data.get('reaction_name', 'unknown')}): {e}"
         return (False, error_msg, row_data.get('index', -1))
 
-def analyze_reactions_parallel_pool(df: pd.DataFrame, save_path: str = "plots", n_processes: int = None) -> None:
+def analyze_reactions_parallel(df: pd.DataFrame, save_path: str = "plots", n_processes: int = None) -> None:
     """
-    Analyze all reactions in parallel using multiprocessing.Pool.
+    Analyze all reactions in parallel.
     
     Args:
         df: DataFrame containing reaction data
@@ -452,148 +451,6 @@ def analyze_reactions_parallel_pool(df: pd.DataFrame, save_path: str = "plots", 
     logger.info(f"Parallel processing completed in {end_time - start_time:.2f} seconds")
     logger.info(f"Successfully created {successful_plots} plots, {failed_plots} failed")
 
-def analyze_reactions_parallel_futures(df: pd.DataFrame, save_path: str = "plots", n_processes: int = None) -> None:
-    """
-    Analyze reactions in parallel using concurrent.futures.ProcessPoolExecutor.
-    This version provides better progress tracking.
-    
-    Args:
-        df: DataFrame containing reaction data
-        save_path: Path to save plots
-        n_processes: Number of processes to use (None = auto-detect)
-    """
-    logger.info(f"Starting parallel analysis of {len(df)} reactions with futures")
-    
-    if n_processes is None:
-        n_processes = max(1, cpu_count() - 4)
-    
-    logger.info(f"Using {n_processes} processes")
-    
-    # Get reference data from first row
-    reference_row = df.iloc[0]
-    reference_name = reference_row['reaction_name']
-    logger.info(f"Using reference: {reference_name}")
-    
-    # Get all percentile columns for reference
-    reference_dict = {}
-    for col in reference_row.index:
-        if col.endswith('_percentile'):
-            reference_dict[col] = reference_row[col]
-    
-    # Prepare arguments for parallel processing
-    args_list = []
-    for idx, row in df.iterrows():
-        row_dict = row.to_dict()
-        is_reference = (idx == 0)
-        args_list.append((row_dict, reference_dict, save_path, is_reference))
-    
-    # Process in parallel with progress tracking
-    start_time = time.time()
-    successful_plots = 0
-    failed_plots = 0
-    
-    with ProcessPoolExecutor(max_workers=n_processes) as executor:
-        # Submit all jobs
-        future_to_idx = {
-            executor.submit(process_single_reaction, args): i 
-            for i, args in enumerate(args_list)
-        }
-        
-        # Process completed jobs
-        for future in as_completed(future_to_idx):
-            original_idx = future_to_idx[future]
-            try:
-                success, message, reaction_idx = future.result()
-                if success:
-                    successful_plots += 1
-                    logger.info(f"[{successful_plots + failed_plots}/{len(df)}] {message}")
-                else:
-                    failed_plots += 1
-                    logger.error(f"[{successful_plots + failed_plots}/{len(df)}] {message}")
-            except Exception as e:
-                failed_plots += 1
-                logger.error(f"[{successful_plots + failed_plots}/{len(df)}] Exception in future {original_idx}: {e}")
-    
-    end_time = time.time()
-    logger.info(f"Parallel processing completed in {end_time - start_time:.2f} seconds")
-    logger.info(f"Successfully created {successful_plots} plots, {failed_plots} failed")
-
-# =============================================================================
-# ORIGINAL SERIAL FUNCTION
-# =============================================================================
-
-def analyze_reactions_serial(df: pd.DataFrame, save_path: str = "plots") -> None:
-    """Original serial implementation for comparison."""
-    logger.info(f"Starting serial analysis of {len(df)} reactions")
-    
-    # Add index column if it doesn't exist
-    if 'index' not in df.columns:
-        df['index'] = df.index
-        logger.info("Added index column to DataFrame")
-    
-    # Get reference data from first row
-    reference_row = df.iloc[0]
-    reference_name = reference_row['reaction_name']
-    logger.info(f"Using reference: {reference_name}")
-    
-    # Get all percentile columns for reference
-    reference_dict = {}
-    for col in reference_row.index:
-        if col.endswith('percentile'):
-            reference_dict[col] = reference_row[col]
-    
-    logger.info(f"Reference has {len(reference_dict)} percentile properties")
-    
-    # Process each reaction
-    plots_created = 0
-    start_time = time.time()
-    
-    for idx, row in df.iterrows():
-        try:
-            reaction_name = row['reaction_name']
-            file_id = str(row['index'])
-            
-            logger.info(f"Processing reaction {idx + 1}/{len(df)}: {reaction_name}")
-            
-            # Get percentile properties for this row
-            property_dict = {}
-            for col in row.index:
-                if col.endswith('percentile'):
-                    property_dict[col] = row[col]
-            
-            # Create plot
-            if idx == 0:
-                # First row - no reference comparison
-                plot_combined_visualization(
-                    row['product_SMILES'],
-                    property_dict,
-                    reaction_name,
-                    file_id=file_id,
-                    save_path=save_path
-                )
-            else:
-                # Other rows - compare with reference
-                plot_combined_visualization(
-                    row['product_SMILES'],
-                    property_dict,
-                    reaction_name,
-                    file_id=file_id,
-                    reference_data=reference_dict,
-                    reference_name=reference_name,
-                    save_path=save_path
-                )
-            
-            plots_created += 1
-            logger.info(f"Created plot for {reaction_name}")
-            
-        except Exception as e:
-            logger.error(f"Error processing reaction {idx} ({reaction_name}): {e}")
-            continue
-    
-    end_time = time.time()
-    logger.info(f"Serial processing completed in {end_time - start_time:.2f} seconds")
-    logger.info(f"Successfully created {plots_created} plots out of {len(df)} reactions")
-
 # =============================================================================
 # MAIN PROCESSING WITH PARALLELIZATION OPTIONS
 # =============================================================================
@@ -619,7 +476,6 @@ def preprocess_dataframe(df: pd.DataFrame) -> pd.DataFrame:
 def create_radial_plots_main(
     derivatives: str,
     output: str = "radial plots",
-    method: str = 'futures',
     processes: Optional[int] = None
 ) -> None:
     """
@@ -628,7 +484,6 @@ def create_radial_plots_main(
     Args:
         derivatives: Path to input CSV file containing reaction data
         output: Path to save output directory for radial plots
-        method: Processing method ('serial', 'pool', or 'futures')
         processes: Number of processes to use (None = auto-detect)
     """
     try:
@@ -674,17 +529,10 @@ def create_radial_plots_main(
         if missing_percentile_cols:
             raise ValueError(f"Missing required percentile columns: {missing_percentile_cols}")
         
-        # Generate plots based on method choice
+        # Generate plots based on choice
         logger.info("Starting plot generation...")
         
-        if method == 'serial':
-            analyze_reactions_serial(df, save_path=output)
-        elif method == 'pool':
-            analyze_reactions_parallel_pool(df, save_path=output, n_processes=processes)
-        elif method == 'futures':
-            analyze_reactions_parallel_futures(df, save_path=output, n_processes=processes)
-        else:
-            raise ValueError(f"Unknown method: {method}")
+        analyze_reactions_parallel(df, save_path=output, n_processes=processes)
         
         logger.info(f"Plots saved to: {output}")
         
@@ -703,17 +551,13 @@ def main(args) -> int:
         create_radial_plots_main(
             derivatives=args.derivatives,
             output=args.output,
-            method=args.method,
             processes=args.processes
         )
         return 0
     except Exception:
         return 1
 
-if __name__ == "__main__":
-    # Important for multiprocessing on Windows
-    mp.set_start_method('spawn', force=True)
-    
+if __name__ == "__main__":    
     parser = argparse.ArgumentParser(
         description="Generate radial plots for derivatives of LOSDT results with parallelization options.",
         formatter_class=argparse.RawDescriptionHelpFormatter
@@ -722,11 +566,8 @@ if __name__ == "__main__":
                        help="Path to input CSV file containing reaction data")
     parser.add_argument("--output", "-o", type=str, default="radial plots", 
                        help="Path to save output directory for radial plots (default: radial plots)")
-    parser.add_argument("--method", "-m", type=str, choices=['serial', 'pool', 'futures'], 
-                       default='futures',
-                       help="Processing method: serial, pool (multiprocessing.Pool), or futures (ProcessPoolExecutor). Default: futures")
     parser.add_argument("--processes", "-p", type=int, default=None,
-                       help="Number of processes to use for parallel processing (default: auto-detect)")
+                       help='Number of processes to use for parallel processing (default: cpu_count - 4).')
     
     args = parser.parse_args()
     exit(main(args))
