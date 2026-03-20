@@ -1,12 +1,3 @@
-"""
-LOSDT - Lead Optimization Structure-based Drug Design Tool
-A Streamlit application with full molecular editing and 3D visualization.
-
-This enhanced version includes:
-- Streamlit-Ketcher for molecular editing
-- Streamlit-Molstar for 3D structure visualization
-- All original ADMET prediction and analysis features
-"""
 import os
 import sys
 import subprocess
@@ -336,6 +327,33 @@ def main():
                                 cleanup_session(st.session_state.session_id)
                                 st.session_state.session_id = None
 
+    # References section (always visible)
+    st.markdown("### References for open-source tools")
+    
+    with st.expander("View references", expanded=False):
+        st.markdown("""
+        **[RDKit](https://github.com/rdkit/rdkit):**
+
+        The RDKit is a collection of cheminformatics and machine-learning software written in C++ and Python.
+
+        ---
+
+        **[streamlit](https://github.com/streamlit/streamlit):**
+
+        Python-based webserver builder.
+
+        ---
+
+        **[streamlit-ketcher](https://github.com/mik-laj/streamlit-ketcher):**
+
+        Streamlit components that adds the ability to draw chemical compounds.
+
+        ---
+
+        **[streamlit-molstar](https://github.com/pragmatic-streamlit/streamlit-molstar):**
+
+        Mol* is a modern web-based open-source toolkit for visualisation and analysis of large-scale molecular data.
+        """)
     # Footer
     #st.markdown("""
     #<div style='text-align: center; color: #666; padding: 2rem 0;'>

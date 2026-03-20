@@ -84,6 +84,12 @@ Ropp PJ, Kaminsky JC, Yablonski S, Durrant JD (2019) Dimorphite-DL: An open-sour
 
 ---
 
+**[OpenMM](https://openmm.org/):**
+
+A high-performance toolkit for molecular simulation. Use it as an application, a library, or a flexible programming environment. We include extensive language bindings for Python, C, C++, and even Fortran. 
+
+---
+
 **[RDKit](https://github.com/rdkit/rdkit):**
 
 The RDKit is a collection of cheminformatics and machine-learning software written in C++ and Python.

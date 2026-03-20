@@ -24,29 +24,6 @@ def main():
             import os, signal
             os.kill(os.getpid(), signal.SIGKILL)
 
-    # Description
-    st.markdown("""
-    An open-source toolkit for lead design and optimization, which consists of following tools: 
-    
-    ---
-    
-    **MCSAlign - Maximum Common Substructure Alignment:**
-    
-    An RDKit based alignment tool using an iterative approach of finding Maximum Common Substructures between the 3D template and SMILES-derivatives, copy-pasting the common substructure and repeating on the leftover template. 
-    
-    ---
-    
-    **CCM - Constrained Complex Minimization:** 
-    
-    An OpenMM based energy minimization of complexes with a restrained environment, allowing relatively quick optimization of the ligand-protein-solvent complex.
-    
-    ---
-    
-    **LOSDT - Lead Optimization by Safty by Design Tool:** 
-    
-    Applies a manually curated bioisostere library on a given compound of interest - SMILES or PDB complex - and uses ADMET-AI in order to compare the ADMET properties. If given a complex, it would use the previously mentioned tools CCM and MCSalign to generate the proposed binding modes of the bioisostere derivatives.
-    """)
-
     # Footer
     #st.markdown("""
     #<div style='text-align: center; color: #666; padding: 2rem 0;'>
