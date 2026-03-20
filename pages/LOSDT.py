@@ -847,43 +847,61 @@ def main():
     with st.expander("View references", expanded=False):
         st.markdown("""
         **[ADMET-AI](https://github.com/swansonk14/admet_ai):**
-        
+
         Swanson, K.; Walther, P.; Leitz, J.; Mukherjee, S.; Wu, J. C.; Shivnaraine, R. V.; Zou, J. 
         ADMET-AI: A Machine Learning ADMET Platform for Evaluation of Large-Scale Chemical Libraries. 
         *Bioinformatics* 2024.
         [https://doi.org/10.1093/bioinformatics/btae416](https://doi.org/10.1093/bioinformatics/btae416)
-        
+
         ---
-        
+
         **[ShEPhERD](https://github.com/coleygroup/shepherd-score):**
-        
+
         Adams, K.; Abeywardane, K.; Fromer, J.; Coley, C. W. ShEPhERD: diffusing shape, electrostatics, 
         and pharmacophores for bioisosteric drug design. *Arxiv.org*.
         [https://arxiv.org/html/2411.04130v1](https://arxiv.org/html/2411.04130v1)
-        
+
         ---
-        
-        **[streamlit-ketcher](https://github.com/mik-laj/streamlit-ketcher):**
-        
-        Streamlit components that adds the ability to draw chemical compounds.
-        
+
+        **[Dimorphite-DL](https://github.com/durrantlab/dimorphite_dl):**
+
+        Ropp PJ, Kaminsky JC, Yablonski S, Durrant JD (2019) Dimorphite-DL: An open-source program for enumerating the ionization states of drug-like small molecules. J Cheminform 11:14. doi: [10.1186/s13321-019-0336-9](https://link.springer.com/article/10.1186/s13321-019-0336-9)
+
         ---
-        
-        **[streamlit-molstar](https://github.com/pragmatic-streamlit/streamlit-molstar):**
-        
-        Mol* is a modern web-based open-source toolkit for visualisation and analysis of large-scale molecular data.
-        
+
+        **[OpenMM](https://openmm.org/):**
+
+        A high-performance toolkit for molecular simulation. Use it as an application, a library, or a flexible programming environment. We include extensive language bindings for Python, C, C++, and even Fortran. 
+
         ---
-        
+
         **[RDKit](https://github.com/rdkit/rdkit):**
-        
+
         The RDKit is a collection of cheminformatics and machine-learning software written in C++ and Python.
-        
+
         ---
-        
+
         **[pdb-tools](https://github.com/haddocking/pdb-tools):**
-        
+
         A swiss army knife for manipulating and editing PDB files.
+
+        ---
+
+        **[streamlit](https://github.com/streamlit/streamlit):**
+
+        Python-based webserver builder.
+
+        ---
+
+        **[streamlit-ketcher](https://github.com/mik-laj/streamlit-ketcher):**
+
+        Streamlit components that adds the ability to draw chemical compounds.
+
+        ---
+
+        **[streamlit-molstar](https://github.com/pragmatic-streamlit/streamlit-molstar):**
+
+        Mol* is a modern web-based open-source toolkit for visualisation and analysis of large-scale molecular data.
         """)
     
     # Footer

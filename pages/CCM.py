@@ -390,6 +390,51 @@ def main():
                             if st.session_state.session_id:
                                 cleanup_session(st.session_state.session_id)
                                 st.session_state.session_id = None
+    # References section (always visible)
+    st.markdown("### References for open-source tools")
+    
+    with st.expander("View references", expanded=False):
+        st.markdown("""
+        **[Dimorphite-DL](https://github.com/durrantlab/dimorphite_dl):**
+
+        Ropp PJ, Kaminsky JC, Yablonski S, Durrant JD (2019) Dimorphite-DL: An open-source program for enumerating the ionization states of drug-like small molecules. J Cheminform 11:14. doi: [10.1186/s13321-019-0336-9](https://link.springer.com/article/10.1186/s13321-019-0336-9)
+
+        ---
+
+        **[OpenMM](https://openmm.org/):**
+
+        A high-performance toolkit for molecular simulation. Use it as an application, a library, or a flexible programming environment. We include extensive language bindings for Python, C, C++, and even Fortran. 
+
+        ---
+
+        **[RDKit](https://github.com/rdkit/rdkit):**
+
+        The RDKit is a collection of cheminformatics and machine-learning software written in C++ and Python.
+
+        ---
+
+        **[pdb-tools](https://github.com/haddocking/pdb-tools):**
+
+        A swiss army knife for manipulating and editing PDB files.
+
+        ---
+
+        **[streamlit](https://github.com/streamlit/streamlit):**
+
+        Python-based webserver builder.
+
+        ---
+
+        **[streamlit-ketcher](https://github.com/mik-laj/streamlit-ketcher):**
+
+        Streamlit components that adds the ability to draw chemical compounds.
+
+        ---
+
+        **[streamlit-molstar](https://github.com/pragmatic-streamlit/streamlit-molstar):**
+
+        Mol* is a modern web-based open-source toolkit for visualisation and analysis of large-scale molecular data.
+        """)
 
     # Footer
     #st.markdown("""
