@@ -3,7 +3,6 @@
 - [Installation and usage](#installation-and-usage)
   - [1. Linux](#1-linux)
   - [2. Windows](#2-windows)
-- [Usage](#usage)
 - [Modules](#modules)
   - [1. CCM](#1-CCM)
   - [2. LOSDT](#2-LOSDT)
