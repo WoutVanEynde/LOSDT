@@ -397,7 +397,6 @@ dependencies:
       - tenacity==9.1.4
       - threadpoolctl==3.6.0
       - toml==0.10.2
-      - torch==2.10.0+cpu
       - torchmetrics==1.9.0
       - tornado==6.5.5
       - typed-argument-parser==1.11.0
