@@ -1,6 +1,6 @@
 # Table of contents
 - [Introduction](#introduction)
-- [Installation](#installation)
+- [Installation and usage](#installation-and-usage)
   - [1. Linux](#1-linux)
   - [2. Windows](#2-windows)
 - [Usage](#usage)
@@ -28,7 +28,6 @@ conda env create -f environment.yml
 pip install torch==2.10.0 --index-url https://download.pytorch.org/whl/cpu
 conda activate LOSDT
 streamlit run Home.py
-
 ```
 
 ## 2. Windows
