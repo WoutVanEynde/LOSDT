@@ -407,7 +407,7 @@ def analyze_reactions_parallel_pool(df: pd.DataFrame, save_path: str = "plots", 
     logger.info(f"Starting parallel analysis of {len(df)} reactions")
     
     if n_processes is None:
-        n_processes = min(cpu_count(), len(df))
+        n_processes = max(1, cpu_count() - 4)
     
     logger.info(f"Using {n_processes} processes")
     
@@ -465,7 +465,7 @@ def analyze_reactions_parallel_futures(df: pd.DataFrame, save_path: str = "plots
     logger.info(f"Starting parallel analysis of {len(df)} reactions with futures")
     
     if n_processes is None:
-        n_processes = min(cpu_count(), len(df))
+        n_processes = max(1, cpu_count() - 4)
     
     logger.info(f"Using {n_processes} processes")
     
