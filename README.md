@@ -2,7 +2,7 @@
 - [Introduction](#introduction)
 - [Installation and usage](#installation-and-usage)
   - [1. Linux](#1-linux)
-  - [2. Windows](#2-windows)
+  - [2. Windows and Mac](#2-windows-and-mac)
 - [Modules](#modules)
   - [1. CCM](#1-CCM)
   - [2. LOSDT](#2-LOSDT)
@@ -31,7 +31,7 @@ conda env update --file environment.yml
 streamlit run Home.py
 ```
 
-## 2. Windows
+## 2. Windows and Mac
 
 Install [docker.desktop](https://www.docker.com/products/docker-desktop/), search for the LOSDT image, pull it and run it with: Optional settings> Host port> 8501
 
