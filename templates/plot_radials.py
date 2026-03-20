@@ -8,10 +8,8 @@ import pandas as pd
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Any
 import logging
-from multiprocessing import Pool, cpu_count
-from functools import partial
+from multiprocessing import cpu_count
 import time
-import multiprocessing as mp
 
 from rdkit import Chem
 from rdkit.Chem import Draw
@@ -430,14 +428,13 @@ def analyze_reactions_parallel(df: pd.DataFrame, save_path: str = "plots", n_pro
         is_reference = (idx == 0)
         args_list.append((row_dict, reference_dict, save_path, is_reference))
     
-    # Process in parallel
+    # Process sequentially
     start_time = time.time()
     successful_plots = 0
     failed_plots = 0
-    
-    with Pool(processes=n_processes) as pool:
-        results = pool.map(process_single_reaction, args_list)
-    
+
+    results = [process_single_reaction(args) for args in args_list]
+
     # Process results
     for success, message, idx in results:
         if success:
