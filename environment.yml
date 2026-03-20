@@ -406,4 +406,3 @@ dependencies:
       - werkzeug==3.1.6
       - xarray==2026.2.0
       - yarl==1.23.0
-prefix: /home/wout/.anaconda/envs/LOSDT_final

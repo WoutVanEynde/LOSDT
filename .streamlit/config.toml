@@ -4,3 +4,6 @@ toolbarMode = "viewer"
 [theme]
 primaryColor = "1FABD5"
 backgroundColor = "white"
+
+[browser]
+gatherUsageStats = false
