@@ -2,13 +2,11 @@ import argparse
 import os
 import numpy as np
 import matplotlib
-matplotlib.use('Agg')  # Important for multiprocessing
 import matplotlib.pyplot as plt
 import pandas as pd
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Any
 import logging
-from multiprocessing import cpu_count
 import time
 
 from rdkit import Chem
@@ -338,12 +336,12 @@ def plot_combined_visualization(mol: str | Chem.Mol,
         return error_msg
 
 # =============================================================================
-# PARALLELIZATION FUNCTIONS
+# FUNCTIONS
 # =============================================================================
 
 def process_single_reaction(args):
     """
-    Process a single reaction - designed for multiprocessing.
+    Process a single reaction
     
     Args:
         args: Tuple containing (row_data, reference_data, save_path, is_reference)
@@ -392,21 +390,15 @@ def process_single_reaction(args):
         error_msg = f"Error processing reaction {row_data.get('index', 'unknown')} ({row_data.get('reaction_name', 'unknown')}): {e}"
         return (False, error_msg, row_data.get('index', -1))
 
-def analyze_reactions_parallel(df: pd.DataFrame, save_path: str = "plots", n_processes: int = None) -> None:
+def analyze_reactions(df: pd.DataFrame, save_path: str = "plots") -> None:
     """
-    Analyze all reactions in parallel.
+    Analyze all reactions.
     
     Args:
         df: DataFrame containing reaction data
         save_path: Path to save plots
-        n_processes: Number of processes to use (None = auto-detect)
     """
-    logger.info(f"Starting parallel analysis of {len(df)} reactions")
-    
-    if n_processes is None:
-        n_processes = max(1, cpu_count() - 4)
-    
-    logger.info(f"Using {n_processes} processes")
+    logger.info(f"Starting analysis of {len(df)} reactions")
     
     # Get reference data from first row
     reference_row = df.iloc[0]
@@ -421,7 +413,7 @@ def analyze_reactions_parallel(df: pd.DataFrame, save_path: str = "plots", n_pro
     
     logger.info(f"Reference has {len(reference_dict)} percentile properties")
     
-    # Prepare arguments for parallel processing
+    # Prepare arguments
     args_list = []
     for idx, row in df.iterrows():
         row_dict = row.to_dict()
@@ -445,11 +437,11 @@ def analyze_reactions_parallel(df: pd.DataFrame, save_path: str = "plots", n_pro
             logger.error(f"{message}")
     
     end_time = time.time()
-    logger.info(f"Parallel processing completed in {end_time - start_time:.2f} seconds")
+    logger.info(f"Processing completed in {end_time - start_time:.2f} seconds")
     logger.info(f"Successfully created {successful_plots} plots, {failed_plots} failed")
 
 # =============================================================================
-# MAIN PROCESSING WITH PARALLELIZATION OPTIONS
+# MAIN PROCESSING
 # =============================================================================
 
 def preprocess_dataframe(df: pd.DataFrame) -> pd.DataFrame:
@@ -472,8 +464,7 @@ def preprocess_dataframe(df: pd.DataFrame) -> pd.DataFrame:
 
 def create_radial_plots_main(
     derivatives: str,
-    output: str = "radial plots",
-    processes: Optional[int] = None
+    output: str = "radial plots"
 ) -> None:
     """
     Generate radial plots - can be imported or run from CLI.
@@ -481,7 +472,6 @@ def create_radial_plots_main(
     Args:
         derivatives: Path to input CSV file containing reaction data
         output: Path to save output directory for radial plots
-        processes: Number of processes to use (None = auto-detect)
     """
     try:
         # Load data
@@ -529,7 +519,7 @@ def create_radial_plots_main(
         # Generate plots based on choice
         logger.info("Starting plot generation...")
         
-        analyze_reactions_parallel(df, save_path=output, n_processes=processes)
+        analyze_reactions(df, save_path=output)
         
         logger.info(f"Plots saved to: {output}")
         
@@ -547,8 +537,7 @@ def main(args) -> int:
     try:
         create_radial_plots_main(
             derivatives=args.derivatives,
-            output=args.output,
-            processes=args.processes
+            output=args.output
         )
         return 0
     except Exception:
@@ -556,15 +545,13 @@ def main(args) -> int:
 
 if __name__ == "__main__":    
     parser = argparse.ArgumentParser(
-        description="Generate radial plots for derivatives of LOSDT results with parallelization options.",
+        description="Generate radial plots for derivatives of LOSDT results.",
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument("--derivatives", "-d", type=str, required=True, 
                        help="Path to input CSV file containing reaction data")
     parser.add_argument("--output", "-o", type=str, default="radial plots", 
                        help="Path to save output directory for radial plots (default: radial plots)")
-    parser.add_argument("--processes", "-p", type=int, default=None,
-                       help='Number of processes to use for parallel processing (default: cpu_count - 4).')
     
     args = parser.parse_args()
     exit(main(args))
