@@ -18,7 +18,7 @@ import streamlit as st
 
 st.set_page_config(
     page_title="CCM - Constrained Complex Minimization",
-    page_icon="static/favicon.ico",
+    page_icon="static/icon.png",
     layout="wide",
     initial_sidebar_state="expanded"
 )
