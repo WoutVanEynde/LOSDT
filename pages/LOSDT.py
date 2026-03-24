@@ -25,7 +25,7 @@ import io
 
 st.set_page_config(
     page_title="LOSDT - Lead Optimization Tool",
-    page_icon="static/favicon.ico",
+    page_icon="static/icon.png",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -764,11 +764,7 @@ def main():
                 type=['pdb'],
                 label_visibility="collapsed"
             )
-            col1, col2 = st.columns([1, 1])
-            with col1:
-                protonation_button = st.checkbox("Protonate the ligand(s) using Dimorphite-DL.")
-            with col2:
-                energy_minimization_button = st.checkbox("Perform a local energy minimization on the complexes. This will increase computational time.")
+            energy_minimization_button = st.checkbox("Perform a local energy minimization on the complexes. This will increase computational time.")
                     
         with input_tab2:
             st.info("""Click "Apply" to input the SMILES.""")                
@@ -785,7 +781,8 @@ def main():
                     smiles_input = smiles_from_editor
                 elif smiles_from_editor:
                     st.error("Invalid molecular structure")
-            protonation_button = st.checkbox("Protonate the ligand(s) using Dimorphite-DL.", key=2)
+            
+        protonation_button = st.checkbox("Protonate the ligand(s) using Dimorphite-DL.")
         
         # Submission
         col1, col2, col3 = st.columns([1, 2, 1])
