@@ -382,7 +382,25 @@ def find_multiple_mcs_alignments(molecule: Chem.Mol, template: Chem.Mol) -> List
                     )
                     
                     if mol_match3 and tpl_match3:
-                        alignments.append((mol_match3, tpl_match3))
+                        mol_match3, tpl_match3 = remove_1xx_terminal_atoms_paired(molecule, template, mol_match3, tpl_match3)
+                        
+                        if mol_match3 and tpl_match3:
+                             alignments.append((mol_match3, tpl_match3))
+                             
+                             # Fourth MCS - remove first and second MCS atoms
+                             all_mol_matches = mol_match1 + mol_match2 + mol_match3
+                             all_tpl_matches = tpl_match1 + tpl_match2 + tpl_match3
+                             
+                             mol_match4, tpl_match4 = remove_atoms_and_find_mcs(
+                                 molecule, template, all_mol_matches, all_tpl_matches,
+                                 atom_compare=rdFMCS.AtomCompare.CompareIsotopes,
+                                 bond_compare=rdFMCS.BondCompare.CompareAny,
+                                 ring_matches_ring_only=False,
+                                 complete_rings_only=True
+                             )
+                             
+                             if mol_match4 and tpl_match4:
+                                 alignments.append((mol_match4, tpl_match4))
 
             else:
                 #logger.info("Second MCS with elements")
