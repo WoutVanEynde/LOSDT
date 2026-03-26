@@ -8,7 +8,6 @@ if getattr(sys, 'frozen', False):
     os.environ['LD_LIBRARY_PATH'] = bundle_dir + os.pathsep + os.environ.get('LD_LIBRARY_PATH', '')
 
 import argparse
-import subprocess
 import logging
 import traceback
 from rdkit import Chem

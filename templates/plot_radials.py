@@ -1,7 +1,5 @@
 import argparse
-import os
 import numpy as np
-import matplotlib
 import matplotlib.pyplot as plt
 import pandas as pd
 from pathlib import Path

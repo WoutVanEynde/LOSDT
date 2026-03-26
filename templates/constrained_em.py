@@ -20,17 +20,16 @@ import logging
 import json
 import argparse
 from pathlib import Path
-from typing import Optional, List, Tuple, Set, Dict
+from typing import Optional, List, Set, Dict
 from multiprocessing import Pool, cpu_count
 import numpy as np
 from rdkit import Chem
-from rdkit.Chem import AllChem, rdDetermineBonds, rdFMCS
+from rdkit.Chem import rdDetermineBonds
 from openff.toolkit.topology import Molecule
 from pdbfixer import PDBFixer
 from openmmforcefields.generators import SystemGenerator
-from openmm.app import PDBFile, Modeller, ForceField, Simulation
+from openmm.app import PDBFile, Modeller, Simulation
 from openff.toolkit import Molecule
-from openff.units import unit as openff_unit
 from openmm import CustomExternalForce, LangevinMiddleIntegrator, unit#, Platform
 from pdbtools import pdb_selresname, pdb_tocif
 
@@ -244,7 +243,7 @@ def _write_topology_file(filepath: Path, modeller, system, mobile_atoms: Set[int
     bonds_written = set()
     
     with open(filepath, 'w') as f:
-        f.write(f"; Topology for constrained energy minimization\n")
+        f.write("; Topology for constrained energy minimization\n")
         f.write(f"; Total atoms: {total_atoms}\n")
         f.write(f"; Mobile atoms: {len(mobile_atoms)}\n")
         f.write(f"; Restrained atoms: {total_atoms - len(mobile_atoms)}\n\n")
