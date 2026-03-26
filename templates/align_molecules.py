@@ -267,7 +267,7 @@ def remove_1xx_terminal_atoms_paired(mol, tpl, mol_atoms, tpl_atoms):
             if 100 <= mol_isotope:
                 mol_neighbors_in_mcs = sum(1 for neighbor in mol_atom.GetNeighbors() 
                                            if neighbor.GetIdx() in mol_atoms)
-                if mol_neighbors_in_mcs == 1:
+                if mol_neighbors_in_mcs <= 1:
                     mol_is_1xx_terminal = True
             
             # Check template atom
@@ -278,7 +278,7 @@ def remove_1xx_terminal_atoms_paired(mol, tpl, mol_atoms, tpl_atoms):
             if 100 <= tpl_isotope:
                 tpl_neighbors_in_mcs = sum(1 for neighbor in tpl_atom.GetNeighbors() 
                                            if neighbor.GetIdx() in tpl_atoms)
-                if tpl_neighbors_in_mcs == 1:
+                if tpl_neighbors_in_mcs <= 1:
                     tpl_is_1xx_terminal = True
             
             # Remove pair if either is a 1xx terminal atom
@@ -343,67 +343,65 @@ def find_multiple_mcs_alignments(molecule: Chem.Mol, template: Chem.Mol) -> List
         atom_compare=rdFMCS.AtomCompare.CompareElements,
         bond_compare=rdFMCS.BondCompare.CompareOrder,
         ring_matches_ring_only=True,
-        complete_rings_only=True
+        complete_rings_only=False
     )
     
     if mol_match1 and tpl_match1:
         # Remove 1xx terminal atoms from first MCS
         mol_match1, tpl_match1 = remove_1xx_terminal_atoms_paired(molecule, template, mol_match1, tpl_match1)
         
-        if mol_match1 and tpl_match1:  # Check they're still valid after filtering
-            alignments.append((mol_match1, tpl_match1))
-            
-            # Second MCS - remove first MCS atoms
-            mol_match2, tpl_match2 = remove_atoms_and_find_mcs(
-                molecule, template, mol_match1, tpl_match1,
-                atom_compare=rdFMCS.AtomCompare.CompareElements,
-                bond_compare=rdFMCS.BondCompare.CompareOrder,
-                ring_matches_ring_only=False,
-                complete_rings_only=True
-            )
-                        
+        alignments.append((mol_match1, tpl_match1))
+        
+        # Second MCS - remove first MCS atoms
+        mol_match2, tpl_match2 = remove_atoms_and_find_mcs(
+            molecule, template, mol_match1, tpl_match1,
+            atom_compare=rdFMCS.AtomCompare.CompareElements,
+            bond_compare=rdFMCS.BondCompare.CompareOrder,
+            ring_matches_ring_only=True,
+            complete_rings_only=False
+        )
+                    
+        if mol_match2 and tpl_match2:
+            # Remove 1xx terminal atoms from second MCS
+            mol_match2, tpl_match2 = remove_1xx_terminal_atoms_paired(molecule, template, mol_match2, tpl_match2)
+
             if mol_match2 and tpl_match2:
-                # Remove 1xx terminal atoms from second MCS
-                mol_match2, tpl_match2 = remove_1xx_terminal_atoms_paired(molecule, template, mol_match2, tpl_match2)
+                alignments.append((mol_match2, tpl_match2))
                 
-                if mol_match2 and tpl_match2:
-                    alignments.append((mol_match2, tpl_match2))
-                    
-                    # Third MCS - remove first and second MCS atoms
-                    all_mol_matches = mol_match1 + mol_match2
-                    all_tpl_matches = tpl_match1 + tpl_match2
-                    
-                    mol_match3, tpl_match3 = remove_atoms_and_find_mcs(
-                        molecule, template, all_mol_matches, all_tpl_matches,
-                        atom_compare=rdFMCS.AtomCompare.CompareIsotopes,
-                        bond_compare=rdFMCS.BondCompare.CompareAny,
-                        ring_matches_ring_only=False,
-                        complete_rings_only=True
-                    )
+                # Third MCS - remove first and second MCS atoms
+                all_mol_matches = mol_match1 + mol_match2
+                all_tpl_matches = tpl_match1 + tpl_match2
+                
+                mol_match3, tpl_match3 = remove_atoms_and_find_mcs(
+                    molecule, template, all_mol_matches, all_tpl_matches,
+                    atom_compare=rdFMCS.AtomCompare.CompareIsotopes,
+                    bond_compare=rdFMCS.BondCompare.CompareAny,
+                    ring_matches_ring_only=False,
+                    complete_rings_only=False
+                )
+                
+                if mol_match3 and tpl_match3:
+                    mol_match3, tpl_match3 = remove_1xx_terminal_atoms_paired(molecule, template, mol_match3, tpl_match3)
                     
                     if mol_match3 and tpl_match3:
-                        mol_match3, tpl_match3 = remove_1xx_terminal_atoms_paired(molecule, template, mol_match3, tpl_match3)
-                        
-                        if mol_match3 and tpl_match3:
-                             alignments.append((mol_match3, tpl_match3))
-                             
-                             # Fourth MCS - remove first and second MCS atoms
-                             all_mol_matches = mol_match1 + mol_match2 + mol_match3
-                             all_tpl_matches = tpl_match1 + tpl_match2 + tpl_match3
-                             
-                             mol_match4, tpl_match4 = remove_atoms_and_find_mcs(
-                                 molecule, template, all_mol_matches, all_tpl_matches,
-                                 atom_compare=rdFMCS.AtomCompare.CompareIsotopes,
-                                 bond_compare=rdFMCS.BondCompare.CompareAny,
-                                 ring_matches_ring_only=False,
-                                 complete_rings_only=True
-                             )
-                             
-                             if mol_match4 and tpl_match4:
-                                 alignments.append((mol_match4, tpl_match4))
-
+                            alignments.append((mol_match3, tpl_match3))
+                            
+                            # Fourth MCS - remove first and second MCS atoms
+                            all_mol_matches = mol_match1 + mol_match2 + mol_match3
+                            all_tpl_matches = tpl_match1 + tpl_match2 + tpl_match3
+                            
+                            mol_match4, tpl_match4 = remove_atoms_and_find_mcs(
+                                molecule, template, all_mol_matches, all_tpl_matches,
+                                atom_compare=rdFMCS.AtomCompare.CompareIsotopes,
+                                bond_compare=rdFMCS.BondCompare.CompareAny,
+                                ring_matches_ring_only=False,
+                                complete_rings_only=False
+                            )
+                            
+                            if mol_match4 and tpl_match4:
+                                alignments.append((mol_match4, tpl_match4))
+                                
             else:
-                #logger.info("Second MCS with elements")
                 mol_match2, tpl_match2 = remove_atoms_and_find_mcs(
                     molecule, template, mol_match1, tpl_match1,
                     atom_compare=rdFMCS.AtomCompare.CompareIsotopes,
@@ -411,7 +409,7 @@ def find_multiple_mcs_alignments(molecule: Chem.Mol, template: Chem.Mol) -> List
                     ring_matches_ring_only=False,
                     complete_rings_only=False
                 )
-                   
+                    
                 if mol_match2 and tpl_match2:
                     alignments.append((mol_match2, tpl_match2))
     
@@ -460,7 +458,7 @@ def optimize_molecule_geometry(molecule: Chem.Mol, fixed_atoms: List[int]) -> No
                 best_energy = energy
                 best_conf = mol_copy
                 
-        except Exception as e:
+        except Exception:
             #logger.warning(f"Optimization step {i+1} failed: {e}") # Happens if it is already well aligned
             continue
 
