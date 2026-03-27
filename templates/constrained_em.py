@@ -481,11 +481,7 @@ def run_constrained_em_single(
                 mobile_atoms.add(atom.index)                    
         
         result['mobile_atoms'] = len(mobile_atoms)
-        result['restrained_atoms'] = modeller.topology.getNumAtoms() - len(mobile_atoms)
-        
-        total_atoms = modeller.topology.getNumAtoms()
-        restrained_atoms = total_atoms - len(mobile_atoms)      
-        restrained_residues = sum(1 for r in modeller.topology.residues() if r not in mobile_residues)          
+        result['restrained_atoms'] = modeller.topology.getNumAtoms() - len(mobile_atoms)    
         
         if verbose:
             logger.info(f"Mobile atoms: {len(mobile_atoms)}")
