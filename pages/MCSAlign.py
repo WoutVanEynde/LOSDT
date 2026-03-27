@@ -1,15 +1,12 @@
 import os
 import sys
-import subprocess
 import shutil
 import uuid
 import zipfile
 import logging
 import signal
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
-from streamlit_ketcher import st_ketcher
-from streamlit_molstar import st_molstar
+from typing import Dict, Tuple
 import streamlit as st
 
 # =============================================================================
@@ -302,7 +299,7 @@ def main():
                             csv_path = save_uploaded_file(csv_input, session_folder)
                             
                             # Run pipeline with file paths
-                            results = run_molecular_pipeline(
+                            run_molecular_pipeline(
                                 sdf_path, 
                                 csv_path, 
                                 session_folder,

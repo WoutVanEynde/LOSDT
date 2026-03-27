@@ -17,20 +17,18 @@ import traceback
 import argparse
 import concurrent.futures
 from pathlib import Path
-from functools import partial
 from typing import List, Tuple, Dict, Optional
 from multiprocessing import Pool, cpu_count
 import pandas as pd
 from rdkit import Chem, RDLogger
-from rdkit.Chem import AllChem, rdmolfiles, rdFMCS
+from rdkit.Chem import AllChem, rdFMCS
 RDLogger.DisableLog('rdApp.*')
 
 # Add shepherd score to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'static', 'third_party_software', 'shepherd-score')))
 
-from shepherd_score.score.constants import ALPHA, LAM_SCALING
-from shepherd_score.conformer_generation import embed_conformer_from_smiles, charges_from_single_point_conformer_with_xtb
-from shepherd_score.extract_profiles import get_atomic_vdw_radii, get_molecular_surface, get_pharmacophores, get_electrostatic_potential, get_pharmacophores_dict
+from shepherd_score.score.constants import ALPHA
+from shepherd_score.conformer_generation import charges_from_single_point_conformer_with_xtb
 from shepherd_score.container import Molecule, MoleculePair
 
 # Configure logging for multiprocessing

@@ -20,7 +20,7 @@ import argparse
 import logging
 import traceback
 from pathlib import Path
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any
 from rdkit import Chem
 from rdkit.Chem import AllChem, Descriptors, DataStructs
 from admet_ai import ADMETModel
