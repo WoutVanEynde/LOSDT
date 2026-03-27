@@ -560,6 +560,7 @@ def display_results(session_folder: Path, smiles_string: str, has_pdb: bool):
         radial_dir = session_folder / Config.RADIAL_PLOTS_DIR
 
         if radial_dir.exists():
+            st.warning("""Be cautious of ADMET-AI predictions, they are not always accurate and should be used as a guide rather than absolute truth.""")
             plot_files = sorted(list(radial_dir.glob("*.png")))
 
             if plot_files:

@@ -1,14 +1,12 @@
 import os
 import sys
-import multiprocessing
-import subprocess
 import shutil
 import uuid
 import zipfile
 import logging
 import signal
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 from streamlit_molstar import st_molstar
 import streamlit as st
 
@@ -361,14 +359,14 @@ def main():
                             
                             # Run pipeline with file paths
                             if protonation_button:
-                                results = run_molecular_pipeline(
+                                run_molecular_pipeline(
                                     complexes_dir,
                                     session_folder,
                                     protonation=True
                                 )
                                 
                             else:
-                                results = run_molecular_pipeline(
+                                run_molecular_pipeline(
                                     complexes_dir,
                                     session_folder,
                                     protonation=False
