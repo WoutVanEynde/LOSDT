@@ -346,7 +346,7 @@ reaction_name,smirks,reference
 "{Ketomethylene to amide}","[C,c:1]-[C:2](=O)[C:3]-[C,c:4]>>[C,c:1]-[C:2](=O)[N:3]-[C,c:4]","https://pubs.acs.org/doi/full/10.1021/cr950066q"
 "{Urea to amide}","[C,c:1]-[N]-[C:2](=O)[N:3]-[C,c:4]>>[C,c:1]-[C:2](=O)[N:3]-[C,c:4]","https://pubs.acs.org/doi/full/10.1021/cr950066q"
 "{Methyleneamino to amide}","[C,c:1]-[C;!R1:2]-[N;!R1:3]-[C,c:4]>>[C,c:1]-[C;!R1:2](=O)[N;!R1:3]-[C,c:4]","https://pubs.acs.org/doi/full/10.1021/cr950066q"
-"{Thiocarbamate to amide}","[C,c:1]-[O]-[C:2](=S)[N:3]-[C,c:4]>>[C,c:1]-[C;!$([C;R1]):2](=O)[N:3]-[C,c:4]","https://pubs.acs.org/doi/full/10.1021/cr950066q"
+"{Thiocarbamate to amide}","[C,c:1]-[S]-[C:2](=O)[N:3]-[C,c:4]>>[C,c:1]-[C;!$([C;R1]):2](=O)[N:3]-[C,c:4]","https://pubs.acs.org/doi/full/10.1021/cr950066q"
 "{Hydroxyethylene to amide}","[C,c:1]-[C:2]([OH])[CH2:3]-[C,c:4]>>[C,c:1]-[C:2](=O)[N:3]-[C,c:4]","https://pubs.acs.org/doi/full/10.1021/cr950066q"
 "{1,3-oxazol-2-amine to amide}","[C,c:1]-[c:2]1oc(nc1)[N:3]-[C,c:4]>>[C,c:1]-[C;!$([C;R1]):2](=O)[N:3]-[C,c:4]","https://pubs.acs.org/doi/full/10.1021/jm1013693"
 "{Imidazolidinone to amide}","[C,c:1]-[N:2]1C(=O)[N:3](CC1)-[C,c:4]>>[C,c:1]-[C;!$([C;R1]):2](=O)[N;!D3:3]-[C,c:4]","https://pmc.ncbi.nlm.nih.gov/articles/PMC7666045/"
