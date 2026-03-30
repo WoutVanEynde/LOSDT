@@ -44,13 +44,6 @@ class Config:
     RADIAL_PLOTS_DIR = "radial_plots"
 
     # Reaction databases
-    # REACTIONS = 'reactions_validated.csv'
-    # REACTIONS = 'reactions_validated_mapped.csv'
-    # REACTIONS = 'reactions_to_validate.csv'
-    # REACTIONS = 'reactions_validated_mapped_full.csv'
-    # REACTIONS = 'reactions_validated_mapped_full_reversed.csv'
-    # REACTIONS = 'reactions_validated_mapped_phenyl_full.csv'
-    # REACTIONS = 'reactions_validated_mapped_phenyl_full_reversed.csv'
     REACTIONS = "reactions_validated_mapped_full_all_combined.csv"
     REACTANTS = "reactants.txt"
 
