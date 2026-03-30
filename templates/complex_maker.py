@@ -11,7 +11,7 @@ import argparse
 import logging
 import traceback
 from rdkit import Chem
-from pdbtools import pdb_merge, pdb_tocif
+from pdbtools import pdb_merge
 
 # Configure logging for multiprocessing
 def setup_logging():
@@ -137,12 +137,6 @@ def renumber_ligand(input_file, output_file):
     with open(output_file, 'w') as f:
         f.writelines(new_lines)
 
-def pdb_to_cif(input_pdb, output_cif):
-    """Convert pdb to cif using pdb-tools."""
-    with open(input_pdb, 'r') as in_f, open(output_cif, 'w') as out_f:
-        for line in pdb_tocif.run(in_f):
-            out_f.write(line)
-
 def create_complexes_main(protein: str, ligands: str, complexes: str = "complexes") -> None:
     """
     Create protein-ligand complexes - can be imported or run from CLI.
@@ -165,7 +159,6 @@ def create_complexes_main(protein: str, ligands: str, complexes: str = "complexe
                 complex_pdb_path = os.path.join(complexes, ligand_name + "_complex_inital.pdb")
                 complex_pdb_path_intermediate = os.path.join(complexes, ligand_name + "_complex_intermediate.pdb")
                 complex_pdb_path_final = os.path.join(complexes, ligand_name + "_complex_final.pdb")
-                complex_cif_path = os.path.join(complexes, ligand_name + "_complex.cif")
                 
                 logger.info(f"[INFO] Processing ligand: {ligand_name}")
                 
@@ -182,10 +175,7 @@ def create_complexes_main(protein: str, ligands: str, complexes: str = "complexe
                     # Renumber ligand atoms to avoid duplicates
                     renumber_ligand(complex_pdb_path_intermediate, complex_pdb_path_final)
                     
-                    # Output cif
-                    pdb_to_cif(complex_pdb_path_final, complex_cif_path)
-                    
-                    logger.info(f"[SUCCESS] Complex saved: {complex_cif_path}")
+                    logger.info(f"[SUCCESS] Complex saved: {complex_pdb_path_final}")
                     
                     # Clean files 
                     os.unlink(ligand_pdb_path)
