@@ -214,39 +214,6 @@ def run_molecular_pipeline(complexes_dir: Path,
     
     return results
 
-def remove_ace_nme_lines_in_place(cif_path: Path) -> Path:
-    """
-    Overwrites the original .cif file:
-    Completely removes every ATOM / HETATM line that belongs to ACE or NME.
-    Returns the same path (now modified).
-    """
-    lines = cif_path.read_text(encoding="utf-8").splitlines(keepends=False)
-    kept_lines = []
-    removed_count = 0
-
-    for line in lines:
-        # Skip header-like lines and non-coordinate records
-        if not (line.startswith("ATOM") or line.startswith("HETATM")):
-            kept_lines.append(line)
-            continue
-
-        # Check for ACE or NME in residue name field
-        # Typical mmCIF/PDB-like column: resname around columns 18-20 (0-based 17:20)
-        # But we use string search — robust for most cases
-        if any(tag in line for tag in [" ACE ", " NME "]):
-            removed_count += 1
-            continue  # drop this line
-
-        kept_lines.append(line)
-
-    if removed_count > 0:
-        cif_path.write_text("\n".join(kept_lines) + "\n", encoding="utf-8")
-        print(f"Removed {removed_count} ACE/NME lines from: {cif_path.name}")
-    else:
-        print(f"No ACE/NME lines found in: {cif_path.name}")
-
-    return cif_path
-
 def display_results(session_folder: Path):
     """
     Display results of molecular alignment.
@@ -257,11 +224,9 @@ def display_results(session_folder: Path):
     # Display summary
     em_complexes_dir = session_folder / Config.EM_COMPLEXES_DIR
     if em_complexes_dir.exists():
+        st.warning("""Be cautious of Dimorphite-DL predictions, they are not always accurate and should be used as a guide rather than absolute truth.""")
         complex_em_files = sorted(list(em_complexes_dir.glob('*_minimized.pdb')))
         if complex_em_files:
-            #for cif_file in complex_em_files:
-            #    remove_ace_nme_lines_in_place(cif_file)
-        # Display current structure
             if len(complex_em_files) == 1:
                 current_structure = complex_em_files[0]
             else:
