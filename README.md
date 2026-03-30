@@ -11,7 +11,7 @@
 
 # Introduction
 
-This repository contains the setup to perform lead optimization with bioisosteres, other modules for a local energy minimization and aligment are available as well.
+This repository contains the setup to perform lead optimization with bioisosteres, other modules for a local energy minimization and derivative alignment are available as well.
 
 # Installation and usage
 
@@ -19,7 +19,7 @@ This repository contains the setup to perform lead optimization with bioisostere
 
 There are multiple options for Linux, including an executable file, a docker container or conda environment.
 
-For the executable, you can download and run it. For the docker container, please download the latest LOSDT image from dockerhub and run the container.
+For the executable, you can download and run it. For the docker container, please download the latest LOSDT image from dockerhub and run the container with: Optional settings > Host port > 8501.
 
 In case you want to use a conda environment, run:
 
@@ -33,7 +33,7 @@ streamlit run Home.py
 
 ## 2. Windows and Mac
 
-Install [docker.desktop](https://www.docker.com/products/docker-desktop/), search for the LOSDT image, pull it and run it with: Optional settings> Host port> 8501
+Install [docker.desktop](https://www.docker.com/products/docker-desktop/), search for the LOSDT image, pull it and run it with: Optional settings > Host port > 8501
 
 After, you can open the local URL link and use the application.
 
