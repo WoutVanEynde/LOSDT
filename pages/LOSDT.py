@@ -1029,7 +1029,7 @@ def display_results(session_folder: Path, smiles_string: str, has_pdb: bool):
 
             with tab4:
                 if complexes_dir.exists():
-                    complex_files = sorted(list(complexes_dir.glob("*complex.pdb")))
+                    complex_files = sorted(list(complexes_dir.glob("*final.pdb")))
 
                     if complex_files:
                         # Display current structure
