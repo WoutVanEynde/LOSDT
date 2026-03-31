@@ -816,21 +816,17 @@ def align_molecules_serial(smiles_list: List[str], template: Chem.Mol) -> Tuple[
             aligned_mol = align_and_optimize(mol, template)
             aligned_molecules.append(aligned_mol)
             
-            # Shepherd scoring (skip first molecule which is the template)
-            if i > 0:
-                template_for_scoring = aligned_molecules[0]
-                with concurrent.futures.ThreadPoolExecutor() as executor:
-                    future = executor.submit(shepherd_scoring, aligned_mol, template_for_scoring)
-                    try:
-                        shepherd_aligned, vol_esp_score = future.result(timeout=Config.TIMEOUT)
-                        aligned_molecules[i] = shepherd_aligned
-                        scores.append(vol_esp_score)
-                        logger.info(f"Successfully processed molecule {i+1}/{len(smiles_list)}")
-                    except concurrent.futures.TimeoutError:
-                        logger.error(f"Timeout: Failed to score molecule {i} ({smiles}) within {Config.TIMEOUT} seconds")
-                        scores.append(0.0)
-            else:
-                scores.append(1.0)  # Perfect score for template
+            template_for_scoring = template
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(shepherd_scoring, aligned_mol, template_for_scoring)
+                try:
+                    shepherd_aligned, vol_esp_score = future.result(timeout=Config.TIMEOUT)
+                    aligned_molecules[i] = shepherd_aligned
+                    scores.append(vol_esp_score)
+                    logger.info(f"Successfully processed molecule {i+1}/{len(smiles_list)}")
+                except concurrent.futures.TimeoutError:
+                    logger.error(f"Timeout: Failed to score molecule {i} ({smiles}) within {Config.TIMEOUT} seconds")
+                    scores.append(0.0)
                 
         except Exception as e:
             logger.error(f"Failed to process molecule {i} ({smiles}): {e}")
@@ -891,7 +887,7 @@ def align_molecules_main(
         # Save aligned molecules (skip first one and None values)
         output_dir = Path(aligned_molecules)
         saved_count = 0
-        for i, aligned_mol in enumerate(aligned_molecules_list[1:], start=1):  # Skip first molecule
+        for i, aligned_mol in enumerate(aligned_molecules_list[1:]):  # Skip template
             if aligned_mol is not None:
                 output_file = output_dir / f"aligned_derivative_{i:03d}.sdf"
                 #logger.info(f"Saving derivative {i} to {output_file}")
