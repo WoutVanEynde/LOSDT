@@ -553,7 +553,7 @@ def display_results(session_folder: Path, smiles_string: str, has_pdb: bool):
         radial_dir = session_folder / Config.RADIAL_PLOTS_DIR
 
         if radial_dir.exists():
-            st.warning("""Be cautious of ADMET-AI and Dimorphite-DL predictions, they are not always accurate and should be used as a guide rather than absolute truth.""")
+            st.warning("""Be cautious of ADMET-AI and Dimorphite-DL predictions, they are not always accurate and should be used as a guide rather than absolute truth. A critical review on ADMET-AI can be found here: https://openadmet.ghost.io/zero-shot-expansiorx-admet-predictions/""")
             plot_files = sorted(list(radial_dir.glob("*.png")))
 
             if plot_files:
@@ -1191,7 +1191,7 @@ def main():
                 "Choose PDB file", type=["pdb"], label_visibility="collapsed"
             )
             energy_minimization_button = st.checkbox(
-                "Perform a local energy minimization on the complexes. This will increase computational time."
+                "Perform local energy minimization on the complexes. This drastically increases computational time and is not recommended on smaller PCs, instead use the CCM module afterwards on complexes of interest."
             )
 
         with input_tab2:
