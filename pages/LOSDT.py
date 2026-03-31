@@ -651,6 +651,18 @@ def display_results(session_folder: Path, smiles_string: str, has_pdb: bool):
                             "Stereo centers", format="%.0f"
                         ),
                         "tpsa": st.column_config.NumberColumn("TPSA", format="%.2f"),
+                        "PAINS_alert": st.column_config.NumberColumn(
+                            "PAINS alert",
+                            format="%d",
+                        ),
+                        "BRENK_alert": st.column_config.NumberColumn(
+                            "BRENK alert",
+                            format="%d",
+                        ),
+                        "NIH_alert": st.column_config.NumberColumn(
+                            "NIH alert",
+                            format="%d",
+                        ),                                                                        
                         "AMES": st.column_config.ProgressColumn(
                             "Mutagenicity (AMES)",
                             format="%.2f",
