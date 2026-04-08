@@ -478,7 +478,7 @@ def _progressive_constraint_optimization(
     """Gradually release constraints during optimization."""
     
     # Start with stiff constraints, gradually reduce
-    force_constants = [1000, 500, 100, 10]
+    force_constants = [1000, 500, 100, 10, 5]
     
     for k in force_constants:
         ff = AllChem.MMFFGetMoleculeForceField(
