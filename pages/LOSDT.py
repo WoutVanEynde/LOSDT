@@ -170,10 +170,9 @@ def cleanup_session(session_id: str) -> None:
 # =============================================================================
 
 
-def extract_ligand_with_pdbtools(pdb_file_path: Path, output_path: Path) -> None:
+def extract_ligand_with_pdbtools(pdb_file_path: Path, output_path: Path, ligand_name: str) -> None:
     """Extract organic ligand from a protein–ligand complex using pdb-tools."""
-    # Residue name is literally "*"
-    ligand_resname = {"*"}
+    ligand_resname = {ligand_name}
 
     # Extract ligand (select residues named "*")
     with open(pdb_file_path, "r") as in_f, open(output_path, "w") as out_f:
@@ -223,12 +222,12 @@ def _convert_pdb_to_mol_with_bonds(pdb_file_path: Path) -> Chem.Mol:
     return mol
 
 
-def extract_smiles_from_pdb(pdb_file_path: Path) -> str:
+def extract_smiles_from_pdb(pdb_file_path: Path, ligand_name: str) -> str:
     """Extract SMILES representation from PDB file."""
     temp_ligand_path = pdb_file_path.parent / f"{pdb_file_path.stem}_temp_ligand.pdb"
 
     try:
-        extract_ligand_with_pdbtools(pdb_file_path, temp_ligand_path)
+        extract_ligand_with_pdbtools(pdb_file_path, temp_ligand_path, ligand_name)
 
         if not temp_ligand_path.exists() or temp_ligand_path.stat().st_size == 0:
             raise ValueError("No ligand extracted from PDB file")
@@ -243,7 +242,7 @@ def extract_smiles_from_pdb(pdb_file_path: Path) -> str:
 
 
 def extract_ligand_from_pdb(
-    pdb_file_path: Path, ligand_sdf_path: Path, ligand_pdb_path: Path
+    pdb_file_path: Path, ligand_sdf_path: Path, ligand_pdb_path: Path, ligand_name: str
 ) -> None:
     """
     Extract ligand from PDB file and save in both SDF and PDB formats.
@@ -251,7 +250,7 @@ def extract_ligand_from_pdb(
     temp_ligand_path = pdb_file_path.parent / f"{pdb_file_path.stem}_temp_ligand.pdb"
 
     try:
-        extract_ligand_with_pdbtools(pdb_file_path, temp_ligand_path)
+        extract_ligand_with_pdbtools(pdb_file_path, temp_ligand_path, ligand_name)
 
         if not temp_ligand_path.exists() or temp_ligand_path.stat().st_size == 0:
             raise ValueError("No ligand extracted from PDB file")
@@ -397,7 +396,7 @@ def zip_files(file_paths: List[Path], zip_path: Path) -> None:
 
 
 def process_input_data(
-    smiles_input: Optional[str], pdb_file, session_folder: Path
+    smiles_input: Optional[str], pdb_file, session_folder: Path, ligand_name: str
 ) -> Tuple[str, Optional[Path]]:
     """
     Validate and process input (PDB file and/or SMILES).
@@ -417,7 +416,7 @@ def process_input_data(
             f.write(pdb_file.getbuffer())
 
         # Extract SMILES from PDB
-        extracted_smiles = extract_smiles_from_pdb(pdb_file_path)
+        extracted_smiles = extract_smiles_from_pdb(pdb_file_path, ligand_name=ligand_name)
 
         # Use extracted SMILES if no valid SMILES provided
         if not smiles_input or not is_valid_smiles(smiles_input):
@@ -438,6 +437,7 @@ def run_molecular_pipeline(
     session_folder: Path,
     energy_minimization: bool,
     protonation: bool,
+    ligand_name: str,
 ) -> Dict:
     """
     Execute complete molecular processing pipeline.
@@ -458,7 +458,7 @@ def run_molecular_pipeline(
         ligand_pdb = session_folder / f"{Config.EXTRACTED_LIGAND_NAME}.pdb"
         receptor_pdb = session_folder / f"{Config.RECEPTOR_NAME}.pdb"
 
-        extract_ligand_from_pdb(pdb_file_path, ligand_sdf, ligand_pdb)
+        extract_ligand_from_pdb(pdb_file_path, ligand_sdf, ligand_pdb, ligand_name)
 
         # Align molecules
         aligned_dir = session_folder / Config.ALIGNED_MOLECULES_DIR
@@ -1197,11 +1197,13 @@ def main():
         pdb_file = None
 
         with input_tab1:
-            st.info("""Upload a cleaned PDB file with the bioactive conformation of the ligand. 
-            **Important:** The ligand of interest should be named '*' in the PDB file.""")
+            st.info("""Upload a cleaned, protonated PDB file with the bioactive conformation of the ligand. Please note that covalent drugs are not supported at the moment.""")
             pdb_file = st.file_uploader(
                 "Choose PDB file", type=["pdb"], label_visibility="collapsed"
             )
+            ligand_name = st.text_input(
+                "Ligand name in PDB file", value="*", help="The residue name of the ligand in the PDB file. If your ligand has a specific residue name (e.g., 'LIG'), please enter it here."
+            )            
             energy_minimization_button = st.checkbox(
                 "Perform local energy minimization on the complexes. This drastically increases computational time and is not recommended on smaller PCs, instead use the CCM module afterwards on complexes of interest."
             )
@@ -1255,7 +1257,7 @@ def main():
 
                             # Process inputs
                             validated_smiles, pdb_path = process_input_data(
-                                smiles_input, pdb_file, session_folder
+                                smiles_input, pdb_file, session_folder, ligand_name=ligand_name
                             )
 
                             # Run pipeline
@@ -1265,6 +1267,7 @@ def main():
                                 session_folder,
                                 energy_minimization=energy_minimization_button,
                                 protonation=protonation_button,
+                                ligand_name=ligand_name,
                             )
 
                             # Store results
