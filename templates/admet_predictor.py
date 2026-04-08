@@ -244,10 +244,10 @@ def create_input_molecule_entry(input_smiles: str,
                               protonation: bool) -> Dict[str, Any]:
     """Create entry for input molecule with ADMET properties."""
     if protonation is True:
-        protonated_SMILES = protonate_smiles(input_smiles, ph_min=7.0, ph_max=7.4, precision=1.0, max_variants=1)
-        input_smiles = protonated_SMILES[0]
+        protonated_SMILES = protonate_smiles(input_smiles, ph_min=7.4, ph_max=7.4, precision=1.0, max_variants=1)
+        input_smiles_protonated = protonated_SMILES[0]
         
-    input_admet = model.predict(smiles=input_smiles)
+    input_admet = model.predict(smiles=input_smiles_protonated)
     
     # Handle ADMET properties based on their type
     if isinstance(input_admet, dict):
@@ -268,7 +268,7 @@ def create_input_molecule_entry(input_smiles: str,
         return {
             "reaction_name": "Input Molecule",
             "product_SMILES": input_smiles,
-            'Protonated SMILES': protonated_SMILES[0],
+            'Protonated SMILES': input_smiles_protonated,
             "molecular_weight_RDkit": input_mol_properties['molecular_weight'],
             "TPSA_RDKit": input_mol_properties['tpsa'],
             "tanimoto_similarity_input_SMILES": Config.PERFECT_SIMILARITY,
@@ -338,7 +338,7 @@ def predict_admet_for_reactions(input_smiles: str,
     
     # PROTONATE
     if protonation is True:    
-        protonated_SMILES = protonate_smiles(results_df["product_SMILES"], ph_min=7.0, ph_max=7.4, precision=1.0, max_variants=1)
+        protonated_SMILES = protonate_smiles(results_df["product_SMILES"], ph_min=7.4, ph_max=7.4, precision=1.0, max_variants=1)
         protonated_SMILES_df = pd.DataFrame(protonated_SMILES, columns=['Protonated SMILES'])
         results_df_protonated = protonated_SMILES_df.join(results_df)
         results_df = results_df_protonated

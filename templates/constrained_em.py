@@ -29,9 +29,8 @@ from openff.toolkit.topology import Molecule
 from pdbfixer import PDBFixer
 from openmmforcefields.generators import SystemGenerator
 from openmm.app import PDBFile, Modeller, Simulation
-from openff.toolkit import Molecule
-from openmm import CustomExternalForce, LangevinMiddleIntegrator, unit#, Platform
-from pdbtools import pdb_selresname, pdb_tocif
+from openmm import CustomExternalForce, LangevinMiddleIntegrator, unit
+from pdbtools import pdb_selresname
 
 # Add dimorphite_dl to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'static', 'third_party_software', 'dimorphite_dl')))
@@ -53,7 +52,7 @@ logger = setup_logging()
 # ============================================================================
 DEFAULT_RESTRAINT_RADIUS = 0.6  # Distance in nm (6 Å = 0.6 nm)
 DEFAULT_RESTRAINT_STRENGTH = 1000000.0  # kJ/mol/nm² - very high to effectively freeze atoms
-DEFAULT_MINIMIZATION_STEPS = 5000
+DEFAULT_MINIMIZATION_STEPS = 0
 DEFAULT_ENERGY_REPORT_INTERVAL = 50
 DEFAULT_TEMPERATURE = 300  # Kelvin
 DEFAULT_TIMESTEP = 0.002  # picoseconds
@@ -149,7 +148,7 @@ def extract_ligands_from_pdb(pdb_path: Path, protonation: bool, ligand_residue_n
                 if protonation is True:
                     mol_noh = Chem.RemoveAllHs(mol)
                     mol_smiles = Chem.MolToSmiles(mol_noh)
-                    protonated_smiles = protonate_smiles(mol_smiles, ph_min=7.4, ph_max=7.4, precision=0.0, max_variants=1) #Changing precision from 1.0 to 0.0 would crash consistently for multiple test complexes; not sure why
+                    protonated_smiles = protonate_smiles(mol_smiles, ph_min=7.4, ph_max=7.4, precision=1.0, max_variants=1) #Changing precision from 1.0 to 0.0 would crash consistently for multiple test complexes; not sure why
                     protonated = Chem.MolFromSmiles(protonated_smiles[0])
                     fix_oxygen_formal_charges(protonated)
                     # This worked best, assignbondsfromtemplate made explicit carbons resulting in radicals instead of hydrogens in some cases
@@ -159,17 +158,6 @@ def extract_ligands_from_pdb(pdb_path: Path, protonation: bool, ligand_residue_n
                     logger.info(f"Ligand {ligand_name} protonated with SMILES: {protonated_smiles}!")
                     mol = protonated
                                                     
-                # Compute MMFF partial charges; not needed anymore since Sage 2.3.0
-                #mmff = AllChem.MMFFGetMoleculeProperties(mol)
-                
-                # Extract charges (one per atom, in atom order); not needed anymore since Sage 2.3.0
-                #charges = [mmff.GetMMFFPartialCharge(i) for i in range(mol.GetNumAtoms())]
-
-                # Format as space-separated string; not needed anymore since Sage 2.3.0
-                #charges_str = " ".join(f"{charge:.6f}" for charge in charges)
-                
-                # Set charge and name as molecular property
-                #mol.SetProp("atom.dprop.PartialCharge", charges_str); not needed anymore since Sage 2.3.0
                 mol.SetProp("_Name", ligand_name)
                 
                 # Convert to temp sdf file and then to openff molecule
@@ -536,19 +524,12 @@ def run_constrained_em_single(
         state = simulation.context.getState(getEnergy=True)
         result['initial_energy'] = state.getPotentialEnergy().value_in_unit(unit.kilojoules_per_mole)
         
-        if verbose:
-            logger.info(f"Initial energy: {result['initial_energy']:.2f} kJ/mol")
-        
         # Minimize
         simulation.minimizeEnergy(maxIterations=minimization_steps)
         
         # Get final energy
         state = simulation.context.getState(getEnergy=True, getPositions=True)
         result['final_energy'] = state.getPotentialEnergy().value_in_unit(unit.kilojoules_per_mole)
-        
-        if verbose:
-            logger.info(f"Final energy: {result['final_energy']:.2f} kJ/mol")
-            logger.info(f"Energy change: {result['final_energy'] - result['initial_energy']:.2f} kJ/mol")
         
         # ====================================================================
         # STEP 7: Save outputs
@@ -560,13 +541,9 @@ def run_constrained_em_single(
         
         # Save minimized structure as pdb and cif
         output_pdb_path = output_dir / f'{output_prefix}_minimized.pdb'
-        complex_cif_path = output_dir / f'{output_prefix}_minimized.cif'
         
         with open(output_pdb_path, 'w') as f:
             PDBFile.writeFile(modeller.topology, minimized_positions, f)
-        with open(output_pdb_path, 'r') as in_f, open(complex_cif_path, 'w') as out_f:
-            for line in pdb_tocif.run(in_f):
-                out_f.write(line)
         
         result['success'] = True
         logger.info(f"Success: {output_prefix}")
@@ -630,7 +607,7 @@ def constrained_em_main(
     
     # Determine number of workers
     if processes is None:
-        processes = max(1, cpu_count() - 4)
+        processes = max(1, cpu_count() - 8)
     
     logger.info(f"Using {processes} parallel workers")
     

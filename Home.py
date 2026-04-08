@@ -1,5 +1,3 @@
-from streamlit_ketcher import st_ketcher
-from streamlit_molstar import st_molstar
 import streamlit as st
 
 # =============================================================================
