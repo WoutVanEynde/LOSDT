@@ -41,7 +41,7 @@ After, you can open the local URL link and use the application.
 
 ## 1. CCM
 
-An OpenMM based energy minimization of complexes with a restrained environment, allowing relatively quick optimization of the ligand-protein-solvent complex. An option is provided to protonate the ligand using Dimorphite-DL in the range of pH 7.0-7.4. The following forcefields are used:
+An OpenMM based energy minimization of complexes with a restrained environment, allowing relatively quick optimization of the ligand-protein-solvent complex. An option is provided to protonate the ligand using Dimorphite-DL in the range of pH 7.4. The following forcefields are used:
 
 - Protein: ff19SB
 - DNA: OL21
