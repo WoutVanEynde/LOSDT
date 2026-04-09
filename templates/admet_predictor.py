@@ -246,8 +246,10 @@ def create_input_molecule_entry(input_smiles: str,
     if protonation is True:
         protonated_SMILES = protonate_smiles(input_smiles, ph_min=7.4, ph_max=7.4, precision=1.0, max_variants=1)
         input_smiles_protonated = protonated_SMILES[0]
+        input_admet = model.predict(smiles=input_smiles_protonated)
         
-    input_admet = model.predict(smiles=input_smiles_protonated)
+    else:
+        input_admet = model.predict(smiles=input_smiles)
     
     # Handle ADMET properties based on their type
     if isinstance(input_admet, dict):
