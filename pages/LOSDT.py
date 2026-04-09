@@ -1041,7 +1041,7 @@ def display_results(session_folder: Path, smiles_string: str, has_pdb: bool):
 
             with tab4:
                 if complexes_dir.exists():
-                    complex_files = sorted(list(complexes_dir.glob("*final.pdb")))
+                    complex_files = sorted(list(complexes_dir.glob("aligned_*_final.pdb")))
 
                     if complex_files:
                         # Display current structure
@@ -1066,7 +1066,7 @@ def display_results(session_folder: Path, smiles_string: str, has_pdb: bool):
             with tab5:
                 if em_complexes_dir.exists():
                     complex_em_files = sorted(
-                        list(em_complexes_dir.glob("*_minimized.pdb"))
+                        list(em_complexes_dir.glob("aligned_*_minimized.pdb"))
                     )
 
                     if complex_em_files:
