@@ -884,10 +884,10 @@ def align_molecules_main(
         else:
             raise ValueError(f"Unknown method: {method}")
         
-        # Save aligned molecules (skip first one and None values)
+        # Save aligned molecules (skip None values)
         output_dir = Path(aligned_molecules)
         saved_count = 0
-        for i, aligned_mol in enumerate(aligned_molecules_list[1:]):  # Skip template
+        for i, aligned_mol in enumerate(aligned_molecules_list[:]):
             if aligned_mol is not None:
                 output_file = output_dir / f"aligned_derivative_{i:03d}.sdf"
                 #logger.info(f"Saving derivative {i} to {output_file}")
