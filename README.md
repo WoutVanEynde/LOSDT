@@ -24,10 +24,8 @@ For the executable, you can download and run it. For the docker container, pleas
 In case you want to use a conda environment, run:
 
 ```
-conda create -y -n LOSDT python=3.12
+conda create --file environment.yml
 conda activate LOSDT
-pip install torch==2.10.0 --index-url https://download.pytorch.org/whl/cpu
-conda env update --file environment.yml
 streamlit run Home.py
 ```
 
