@@ -160,7 +160,7 @@ def find_mcs_with_params(mol1: Chem.Mol, mol2: Chem.Mol,
         mol2_match = mol2.GetSubstructMatch(mcs)
         #print("SMARTS:", Chem.MolToSmarts(mcs))
         
-        if Chem.MolToSmarts(mcs) == "[0*]": #No single hydrogens
+        if Chem.MolToSmarts(mcs) == "[#1&!R]": #No single hydrogens
             return None, [], []
         
         return mcs, list(mol1_match), list(mol2_match)
