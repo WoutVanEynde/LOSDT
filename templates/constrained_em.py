@@ -19,6 +19,7 @@ import traceback
 import logging
 import json
 import argparse
+import pandas as pd
 from pathlib import Path
 from typing import Optional, List, Set, Dict
 from multiprocessing import Pool, cpu_count
@@ -32,10 +33,8 @@ from openmm.app import PDBFile, Modeller, Simulation
 from openmm import CustomExternalForce, LangevinMiddleIntegrator, unit
 from pdbtools import pdb_selresname
 
-# Add dimorphite_dl to path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'static', 'third_party_software', 'dimorphite_dl')))
-
-from dimorphite_dl.protonate.run import protonate_smiles
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'static', 'third_party_software', 'pKaLearn', 'GNN')))
+from predict import predict
 
 # Configure logging for multiprocessing
 def setup_logging():
@@ -148,7 +147,9 @@ def extract_ligands_from_pdb(pdb_path: Path, protonation: bool, ligand_residue_n
                 if protonation is True:
                     mol_noh = Chem.RemoveAllHs(mol)
                     mol_smiles = Chem.MolToSmiles(mol_noh)
-                    protonated_smiles = protonate_smiles(mol_smiles, ph_min=7.4, ph_max=7.4, precision=1.0, max_variants=1) #Changing precision from 1.0 to 0.0 would crash consistently for multiple test complexes; not sure why
+                    SMILES_df = pd.DataFrame([mol_smiles], columns=['Smiles'])
+                    predicted_pkas, protonated_SMILES = predict(SMILES_df, pH=7, device='cpu')
+                    protonated_smiles = protonated_SMILES[0]
                     protonated = Chem.MolFromSmiles(protonated_smiles[0])
                     fix_oxygen_formal_charges(protonated)
                     # This worked best, assignbondsfromtemplate made explicit carbons resulting in radicals instead of hydrogens in some cases

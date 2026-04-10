@@ -25,10 +25,8 @@ from rdkit import Chem
 from rdkit.Chem import AllChem, Descriptors, DataStructs
 from admet_ai import ADMETModel
 
-# Add dimorphite_dl to path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'static', 'third_party_software', 'dimorphite_dl')))
-
-from dimorphite_dl.protonate.run import protonate_smiles
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'static', 'third_party_software', 'pKaLearn', 'GNN')))
+from predict import predict
 
 # Configure logging for multiprocessing
 def setup_logging():
@@ -132,7 +130,7 @@ def process_product(product: Chem.Mol, input_fingerprint: DataStructs.ExplicitBi
         tanimoto_similarity = DataStructs.TanimotoSimilarity(input_fingerprint, product_fp)
         
         return {
-            "product_SMILES": Chem.MolToSmiles(product),
+            "Smiles": Chem.MolToSmiles(product),
             "molecular_weight_RDkit": mol_weight,
             "TPSA_RDKit": tpsa,
             "tanimoto_similarity_input_SMILES": tanimoto_similarity
@@ -209,7 +207,7 @@ def predict_admet_for_molecules(molecules_df: pd.DataFrame, model: ADMETModel, p
             lambda smiles: model.predict(smiles=smiles)
         )
     else: 
-        molecules_df['ADMET_properties'] = molecules_df['product_SMILES'].apply(
+        molecules_df['ADMET_properties'] = molecules_df['Smiles'].apply(
             lambda smiles: model.predict(smiles=smiles)
         )    
     # Handle ADMET properties based on their type
@@ -244,10 +242,18 @@ def create_input_molecule_entry(input_smiles: str,
                               protonation: bool) -> Dict[str, Any]:
     """Create entry for input molecule with ADMET properties."""
     if protonation is True:
-        protonated_SMILES = protonate_smiles(input_smiles, ph_min=7.4, ph_max=7.4, precision=1.0, max_variants=1)
+        SMILES_df = pd.DataFrame([input_smiles], columns=['Smiles'])
+        predicted_pkas, protonated_SMILES = predict(SMILES_df, pH=7, device='cpu')
         input_smiles_protonated = protonated_SMILES[0]
-        input_admet = model.predict(smiles=input_smiles_protonated)
-        
+        try:
+            input_admet = model.predict(smiles=input_smiles_protonated)
+            if input_admet is None:
+                raise ValueError("model.predict returned None for protonated SMILES")
+        except Exception as e:
+            logger.warning(f"ADMET prediction failed for protonated SMILES '{input_smiles_protonated}', falling back to original: {e}")
+            input_smiles_protonated = input_smiles
+            input_admet = model.predict(smiles=input_smiles)
+
     else:
         input_admet = model.predict(smiles=input_smiles)
     
@@ -269,7 +275,7 @@ def create_input_molecule_entry(input_smiles: str,
     if protonation is True:
         return {
             "reaction_name": "Input Molecule",
-            "product_SMILES": input_smiles,
+            "Smiles": input_smiles,
             'Protonated SMILES': input_smiles_protonated,
             "molecular_weight_RDkit": input_mol_properties['molecular_weight'],
             "TPSA_RDKit": input_mol_properties['tpsa'],
@@ -280,7 +286,7 @@ def create_input_molecule_entry(input_smiles: str,
     else:
         return {
             "reaction_name": "Input Molecule",
-            "product_SMILES": input_smiles,
+            "Smiles": input_smiles,
             "molecular_weight_RDkit": input_mol_properties['molecular_weight'],
             "TPSA_RDKit": input_mol_properties['tpsa'],
             "tanimoto_similarity_input_SMILES": Config.PERFECT_SIMILARITY,
@@ -330,7 +336,7 @@ def predict_admet_for_reactions(input_smiles: str,
     
     # Sort by similarity and remove duplicates
     results_df = results_df.sort_values(by='tanimoto_similarity_input_SMILES', ascending=False)
-    results_df = results_df.drop_duplicates(subset='product_SMILES', keep='first')
+    results_df = results_df.drop_duplicates(subset='Smiles', keep='first')
     
     # Log after deduplication
     logger.info(f"After deduplication: {len(results_df)} unique products")
@@ -339,8 +345,8 @@ def predict_admet_for_reactions(input_smiles: str,
     results_df = results_df.reset_index(drop=True)
     
     # PROTONATE
-    if protonation is True:    
-        protonated_SMILES = protonate_smiles(results_df["product_SMILES"], ph_min=7.4, ph_max=7.4, precision=1.0, max_variants=1)
+    if protonation is True:
+        predicted_pkas, protonated_SMILES = predict(results_df, pH=7, device='cpu')
         protonated_SMILES_df = pd.DataFrame(protonated_SMILES, columns=['Protonated SMILES'])
         results_df_protonated = protonated_SMILES_df.join(results_df)
         results_df = results_df_protonated
@@ -359,7 +365,8 @@ def predict_admet_for_reactions(input_smiles: str,
     final_result = final_result.merge(reactions_df, on="reaction_name")
     final_result = final_result.drop(columns=['smirks'])
     final_result = pd.concat([input_df, final_result], ignore_index=True)
-    
+    final_result = final_result.rename(columns={'Smiles': 'product_SMILES'})
+
     # Log final result
     logger.info(f"Final result has {len(final_result)} rows (1 input + {len(results_with_admet)} derivatives)")
     

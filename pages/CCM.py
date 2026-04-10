@@ -224,7 +224,7 @@ def display_results(session_folder: Path):
     # Display summary
     em_complexes_dir = session_folder / Config.EM_COMPLEXES_DIR
     if em_complexes_dir.exists():
-        st.warning("""Be cautious of Dimorphite-DL predictions, they are not always accurate and should be used as a guide rather than absolute truth.""")
+        st.warning("""Be cautious of pKaLearn predictions, they are not always accurate and should be used as a guide rather than absolute truth.""")
         complex_em_files = sorted(list(em_complexes_dir.glob('*_minimized.pdb')))
         if complex_em_files:
             if len(complex_em_files) == 1:
@@ -296,7 +296,7 @@ def main():
             accept_multiple_files="directory"
         )
         
-        protonation_button = st.checkbox("Protonate the ligand(s) using Dimorphite-DL.")
+        protonation_button = st.checkbox("Protonate the ligand(s) using pKaLearn.")
         
         col1, col2, col3 = st.columns([1, 2, 1])
         
@@ -358,9 +358,9 @@ def main():
     
     with st.expander("View references", expanded=False):
         st.markdown("""
-        **[Dimorphite-DL](https://github.com/durrantlab/dimorphite_dl):**
+        **[pKaLearn](https://github.com/MoitessierLab/pKaLearn):**
 
-        Ropp PJ, Kaminsky JC, Yablonski S, Durrant JD (2019) Dimorphite-DL: An open-source program for enumerating the ionization states of drug-like small molecules. J Cheminform 11:14. doi: [10.1186/s13321-019-0336-9](https://link.springer.com/article/10.1186/s13321-019-0336-9)
+        Genzling, J., Luo, Z., Weiser, B. et al. Development of a pKa predictor (pKaLearn) by leveraging teaching experience to improve machine learning. Commun Chem (2026). ; [https://www.nature.com/articles/s42004-026-01983-y](https://www.nature.com/articles/s42004-026-01983-y)
 
         ---
 

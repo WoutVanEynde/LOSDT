@@ -1224,7 +1224,7 @@ def main():
                 elif smiles_from_editor:
                     st.error("Invalid molecular structure")
 
-        protonation_button = st.checkbox("Protonate the ligand(s) using Dimorphite-DL.")
+        protonation_button = st.checkbox("Protonate the ligand(s) using pKaLearn.")
 
         # Submission
         col1, col2, col3 = st.columns([1, 2, 1])
@@ -1310,9 +1310,9 @@ def main():
 
         ---
 
-        **[Dimorphite-DL](https://github.com/durrantlab/dimorphite_dl):**
+        **[pKaLearn](https://github.com/MoitessierLab/pKaLearn):**
 
-        Ropp PJ, Kaminsky JC, Yablonski S, Durrant JD (2019) Dimorphite-DL: An open-source program for enumerating the ionization states of drug-like small molecules. J Cheminform 11:14. doi: [10.1186/s13321-019-0336-9](https://link.springer.com/article/10.1186/s13321-019-0336-9)
+        Genzling, J., Luo, Z., Weiser, B. et al. Development of a pKa predictor (pKaLearn) by leveraging teaching experience to improve machine learning. Commun Chem (2026). ; [https://www.nature.com/articles/s42004-026-01983-y](https://www.nature.com/articles/s42004-026-01983-y)
 
         ---
 
