@@ -233,8 +233,13 @@ def extract_smiles_from_pdb(pdb_file_path: Path, ligand_name: str) -> str:
             raise ValueError("No ligand extracted from PDB file")
 
         mol = _convert_pdb_to_mol_with_bonds(temp_ligand_path)
+        # This two-step process ensures proper sanitization, otherwise every single hydrogen explicit, what leads to inconsistent pKaLearn protonation
         smiles = Chem.MolToSmiles(mol)
-
+        mol = Chem.MolFromSmiles(smiles)
+        smiles = Chem.MolToSmiles(mol)
+        pattern = Chem.MolFromSmarts("[S+2]([O-])([O-])")
+        if mol.HasSubstructMatch(pattern):
+            smiles = smiles.replace('[S+2]([O-])([O-])', 'S(=O)(=O)')
         return smiles
 
     finally:
@@ -256,6 +261,19 @@ def extract_ligand_from_pdb(
             raise ValueError("No ligand extracted from PDB file")
 
         mol = _convert_pdb_to_mol_with_bonds(temp_ligand_path)
+
+        # Normalize sulfonamide in-place: DetermineBonds can produce [S+2]([O-])([O-]) instead of S(=O)(=O)
+        pattern = Chem.MolFromSmarts("[S+2]([O-])([O-])")
+        if mol.HasSubstructMatch(pattern):
+            rwmol = Chem.RWMol(mol)
+            for match in rwmol.GetSubstructMatches(pattern):
+                s_idx = match[0]
+                rwmol.GetAtomWithIdx(s_idx).SetFormalCharge(0)
+                for o_idx in match[1:]:
+                    rwmol.GetAtomWithIdx(o_idx).SetFormalCharge(0)
+                    rwmol.GetBondBetweenAtoms(s_idx, o_idx).SetBondType(Chem.BondType.DOUBLE)
+            Chem.SanitizeMol(rwmol)
+            mol = rwmol.GetMol()
 
         writer = Chem.SDWriter(str(ligand_sdf_path))
         writer.write(mol)
@@ -553,7 +571,7 @@ def display_results(session_folder: Path, smiles_string: str, has_pdb: bool):
         radial_dir = session_folder / Config.RADIAL_PLOTS_DIR
 
         if radial_dir.exists():
-            st.warning("""Be cautious of ADMET-AI and Dimorphite-DL predictions, they are not always accurate and should be used as a guide rather than absolute truth. A critical review on ADMET-AI can be found here: https://openadmet.ghost.io/zero-shot-expansiorx-admet-predictions/""")
+            st.warning("""Be cautious of ADMET-AI and pKaLearn predictions, they are not always accurate and should be used as a guide rather than absolute truth. A critical review on ADMET-AI can be found here: https://openadmet.ghost.io/zero-shot-expansiorx-admet-predictions/""")
             plot_files = sorted(list(radial_dir.glob("*.png")))
 
             if plot_files:
@@ -1224,7 +1242,7 @@ def main():
                 elif smiles_from_editor:
                     st.error("Invalid molecular structure")
 
-        protonation_button = st.checkbox("Protonate the ligand(s) using pKaLearn.")
+        protonation_button = st.checkbox("Protonate the ligand using pKaLearn.")
 
         # Submission
         col1, col2, col3 = st.columns([1, 2, 1])
