@@ -579,7 +579,7 @@ def parse_smiles(smiles, j, atom_idx, initial, ionizable_nitrogens, positive_nit
         # Protonate a nitrogen (if no N- in the molecule, we can have O- as in carboxylates - amino acids)
         if (smiles[j] == 'n' or smiles[j] == 'N') and smiles[j + 1] != '+' and smiles[j + 1] != '-' and smiles[j + 1] != '#' and smiles[j + 1] != '@' and \
                 is_smiles is False and addH is True and atom_idx not in positive_nitrogens and atom_idx in ionizable_nitrogens and \
-                atom_idx not in negative_nitrogens and len(negative_nitrogens) == 0:  # TODO: the following should not be needed if the training is good
+                atom_idx not in negative_nitrogens and (smiles[j] == 'N' or len(negative_nitrogens) == 0):  # TODO: the following should not be needed if the training is good
             if j > 0:
                 if smiles[j - 1] == '#':
                     j += 1
@@ -595,7 +595,7 @@ def parse_smiles(smiles, j, atom_idx, initial, ionizable_nitrogens, positive_nit
                 atom_idx += 1
                 return True, smiles_A, j, atom_idx
             # We don't charge if there is a negative nitrogen
-            elif smiles[j + 1] == 'H' and smiles[j] != 'n' and len(negative_nitrogens) == 0:
+            elif smiles[j + 1] == 'H' and smiles[j] != 'n':# and len(negative_nitrogens) == 0:
                 if smiles[j + 2] == ']':
                     smiles_A = smiles[:j] + smiles[j] + 'H2+' + smiles[j + 2:]
                 if smiles[j + 2] == '2':
@@ -611,7 +611,7 @@ def parse_smiles(smiles, j, atom_idx, initial, ionizable_nitrogens, positive_nit
                 atom_idx += 1
                 return False, smiles_A, j, atom_idx
             else:
-                if smiles[j + 1] != '-' and len(negative_nitrogens) == 0:
+                if smiles[j + 1] != '-' and (smiles[j] == 'N' or len(negative_nitrogens) == 0):
                     smiles_A = smiles[:j] + '[' + smiles[j] + 'H+]' + smiles[j + 1:]
                     ionizable_nitrogens.remove(atom_idx)
                     if atom_idx not in positive_nitrogens:
