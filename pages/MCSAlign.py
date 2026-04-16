@@ -274,7 +274,7 @@ def main():
             type=['csv'],
             label_visibility="collapsed"
         )
-        smiles_column_input = st.text_input("SMILES column name:")
+        smiles_column_input = st.text_input("SMILES column name:", value="SMILES", help="Enter the exact name of the column in your CSV file that contains the SMILES strings.")
 
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:

@@ -70,6 +70,8 @@ def load_molecule_from_sdf(sdf_file: Path) -> Chem.Mol:
         smiles = Chem.MolToSmiles(mol)
         logger.info(f"Loaded molecule SMILES: {smiles}")
         new_mol = Chem.MolFromSmiles(smiles)
+        if new_mol is None:
+            raise ValueError(f"Could not parse molecule SMILES: {smiles}")
         
         # Transfer coordinates using MCS
         new_mol = _transfer_coordinates_via_mcs(mol, new_mol)
@@ -160,7 +162,7 @@ def find_mcs_with_params(mol1: Chem.Mol, mol2: Chem.Mol,
         mol2_match = mol2.GetSubstructMatch(mcs)
         #print("SMARTS:", Chem.MolToSmarts(mcs))
         
-        if Chem.MolToSmarts(mcs) == "[0*]": #No single hydrogens
+        if Chem.MolToSmarts(mcs) == "[#1&!R]" or Chem.MolToSmarts(mcs) == "[0*]": #No single hydrogens or single atoms with mass (0 roughly corresponds to hydrogens)
             return None, [], []
         
         return mcs, list(mol1_match), list(mol2_match)
@@ -884,10 +886,10 @@ def align_molecules_main(
         else:
             raise ValueError(f"Unknown method: {method}")
         
-        # Save aligned molecules (skip first one and None values)
+        # Save aligned molecules (skip None values)
         output_dir = Path(aligned_molecules)
         saved_count = 0
-        for i, aligned_mol in enumerate(aligned_molecules_list[1:]):  # Skip template
+        for i, aligned_mol in enumerate(aligned_molecules_list[:]):
             if aligned_mol is not None:
                 output_file = output_dir / f"aligned_derivative_{i:03d}.sdf"
                 #logger.info(f"Saving derivative {i} to {output_file}")

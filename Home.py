@@ -34,11 +34,11 @@ An RDKit based alignment tool using an iterative approach of finding Maximum Com
     
 An open-source tool for lead design and optimization, built on the principle of safety by design. This tool serves as both an ADMET optimizer and an idea generator for navigating beyond patent space. It integrates multiple features, including ADMET-AI and ShEPhERD-score, leveraging a comprehensive bioisosteric reaction library for functionality.
 
-Options for input are 2D compound or 3D ligand in bioactive confirmation inside protein complex. In case of the latter, the bioisosteric derivatives are automatically aligned to the input confirmation using the MCSAlign module. An option for both protonation with Dimorphite-DL at the range pH 7.0-7.4 and energy minimized with the CCM module are given.    
+Options for input are 2D compound or 3D ligand in bioactive confirmation inside protein complex. In case of the latter, the bioisosteric derivatives are automatically aligned to the input confirmation using the MCSAlign module. An option for both protonation with pKaLearn at pH 7.0 and energy minimized with the CCM module are given.    
                 
 **CCM - Constrained Complex Minimization:** 
     
-An OpenMM based energy minimization of complexes with a restrained environment, allowing relatively quick optimization of the ligand-protein-solvent complex. An option is provided to protonate the ligand using Dimorphite-DL in the range of pH 7.0-7.4. The following forcefields are used:
+An OpenMM based energy minimization of complexes with a restrained environment, allowing relatively quick optimization of the ligand-protein-solvent complex. An option is provided to protonate the ligand using pKaLearn at pH 7.0. The following forcefields are used:
 
 - Protein: ff19SB
 - DNA: OL21
@@ -66,9 +66,9 @@ An OpenMM based energy minimization of complexes with a restrained environment, 
 
         ---
 
-        **[Dimorphite-DL](https://github.com/durrantlab/dimorphite_dl):**
+        **[pKaLearn](https://github.com/MoitessierLab/pKaLearn):**
 
-        Ropp PJ, Kaminsky JC, Yablonski S, Durrant JD (2019) Dimorphite-DL: An open-source program for enumerating the ionization states of drug-like small molecules. J Cheminform 11:14. doi: [10.1186/s13321-019-0336-9](https://link.springer.com/article/10.1186/s13321-019-0336-9)
+        Genzling, J., Luo, Z., Weiser, B. et al. Development of a pKa predictor (pKaLearn) by leveraging teaching experience to improve machine learning. Commun Chem (2026). ; [https://www.nature.com/articles/s42004-026-01983-y](https://www.nature.com/articles/s42004-026-01983-y)
 
         ---
 

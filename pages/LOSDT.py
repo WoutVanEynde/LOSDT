@@ -233,8 +233,13 @@ def extract_smiles_from_pdb(pdb_file_path: Path, ligand_name: str) -> str:
             raise ValueError("No ligand extracted from PDB file")
 
         mol = _convert_pdb_to_mol_with_bonds(temp_ligand_path)
+        # This two-step process ensures proper sanitization, otherwise every single hydrogen explicit, what leads to inconsistent pKaLearn protonation
         smiles = Chem.MolToSmiles(mol)
-
+        mol = Chem.MolFromSmiles(smiles)
+        smiles = Chem.MolToSmiles(mol)
+        pattern = Chem.MolFromSmarts("[S+2]([O-])([O-])")
+        if mol.HasSubstructMatch(pattern):
+            smiles = smiles.replace('[S+2]([O-])([O-])', 'S(=O)(=O)')
         return smiles
 
     finally:
@@ -256,6 +261,19 @@ def extract_ligand_from_pdb(
             raise ValueError("No ligand extracted from PDB file")
 
         mol = _convert_pdb_to_mol_with_bonds(temp_ligand_path)
+
+        # Normalize sulfonamide in-place: DetermineBonds can produce [S+2]([O-])([O-]) instead of S(=O)(=O)
+        pattern = Chem.MolFromSmarts("[S+2]([O-])([O-])")
+        if mol.HasSubstructMatch(pattern):
+            rwmol = Chem.RWMol(mol)
+            for match in rwmol.GetSubstructMatches(pattern):
+                s_idx = match[0]
+                rwmol.GetAtomWithIdx(s_idx).SetFormalCharge(0)
+                for o_idx in match[1:]:
+                    rwmol.GetAtomWithIdx(o_idx).SetFormalCharge(0)
+                    rwmol.GetBondBetweenAtoms(s_idx, o_idx).SetBondType(Chem.BondType.DOUBLE)
+            Chem.SanitizeMol(rwmol)
+            mol = rwmol.GetMol()
 
         writer = Chem.SDWriter(str(ligand_sdf_path))
         writer.write(mol)
@@ -553,7 +571,7 @@ def display_results(session_folder: Path, smiles_string: str, has_pdb: bool):
         radial_dir = session_folder / Config.RADIAL_PLOTS_DIR
 
         if radial_dir.exists():
-            st.warning("""Be cautious of ADMET-AI and Dimorphite-DL predictions, they are not always accurate and should be used as a guide rather than absolute truth. A critical review on ADMET-AI can be found here: https://openadmet.ghost.io/zero-shot-expansiorx-admet-predictions/""")
+            st.warning("""Be cautious of ADMET-AI and pKaLearn predictions, they are not always accurate and should be used as a guide rather than absolute truth. A critical review on ADMET-AI can be found here: https://openadmet.ghost.io/zero-shot-expansiorx-admet-predictions/""")
             plot_files = sorted(list(radial_dir.glob("*.png")))
 
             if plot_files:
@@ -1041,7 +1059,7 @@ def display_results(session_folder: Path, smiles_string: str, has_pdb: bool):
 
             with tab4:
                 if complexes_dir.exists():
-                    complex_files = sorted(list(complexes_dir.glob("*final.pdb")))
+                    complex_files = sorted(list(complexes_dir.glob("aligned_*_final.pdb")))
 
                     if complex_files:
                         # Display current structure
@@ -1066,7 +1084,7 @@ def display_results(session_folder: Path, smiles_string: str, has_pdb: bool):
             with tab5:
                 if em_complexes_dir.exists():
                     complex_em_files = sorted(
-                        list(em_complexes_dir.glob("*_minimized.pdb"))
+                        list(em_complexes_dir.glob("aligned_*_minimized.pdb"))
                     )
 
                     if complex_em_files:
@@ -1224,7 +1242,7 @@ def main():
                 elif smiles_from_editor:
                     st.error("Invalid molecular structure")
 
-        protonation_button = st.checkbox("Protonate the ligand(s) using Dimorphite-DL.")
+        protonation_button = st.checkbox("Protonate the ligand using pKaLearn.")
 
         # Submission
         col1, col2, col3 = st.columns([1, 2, 1])
@@ -1310,9 +1328,9 @@ def main():
 
         ---
 
-        **[Dimorphite-DL](https://github.com/durrantlab/dimorphite_dl):**
+        **[pKaLearn](https://github.com/MoitessierLab/pKaLearn):**
 
-        Ropp PJ, Kaminsky JC, Yablonski S, Durrant JD (2019) Dimorphite-DL: An open-source program for enumerating the ionization states of drug-like small molecules. J Cheminform 11:14. doi: [10.1186/s13321-019-0336-9](https://link.springer.com/article/10.1186/s13321-019-0336-9)
+        Genzling, J., Luo, Z., Weiser, B. et al. Development of a pKa predictor (pKaLearn) by leveraging teaching experience to improve machine learning. Commun Chem (2026). ; [https://www.nature.com/articles/s42004-026-01983-y](https://www.nature.com/articles/s42004-026-01983-y)
 
         ---
 
