@@ -361,6 +361,11 @@ def process_single_reaction(args):
             if col_name.endswith('_percentile'):
                 property_dict[col_name] = value
         
+        # Use protonated SMILES if available
+        protonated = row_data.get('Protonated SMILES')
+        if protonated is not None:
+            row_data['product_SMILES'] = protonated
+
         # Create plot
         if is_reference:
             # First row - no reference comparison
