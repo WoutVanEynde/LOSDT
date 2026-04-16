@@ -69,7 +69,7 @@ def argsParser():
     parser.add_argument("--test_data", help="test data", type=str, default='Complete_Set.csv')
     parser.add_argument("--train_pickled", help="train pickled", type=str, default='..\\Datasets\\pickled_data\\train_pickled.pkl')
     parser.add_argument("--test_pickled", help="test pickled", type=str, default='..\\Datasets\\pickled_data\\test_pickled.pkl')
-    parser.add_argument("--carbons_included", help="including carbon ionization center", type=str2bool, default=True)
+    parser.add_argument("--carbons_included", help="including carbon ionization center", type=str2bool, default=False)
     parser.add_argument("--model_dir", help="directory where model is", type=str, default='../Model/')
     parser.add_argument("--model_name", help="model file name", type=str, default='train_AAc-1_best.pth')
     parser.add_argument("--infer_pickled", help="test3 pickled", type=str, default='..\\Datasets\\pickled_data\\infer_pickled.pkl')
