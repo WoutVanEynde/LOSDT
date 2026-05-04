@@ -5,7 +5,7 @@ import streamlit as st
 # =============================================================================
 
 st.set_page_config(
-    page_title="LOSDT - Lead Optimization Tool",
+    page_title="LOSDT - Lead Optimization with Safety by Design Toolkit",
     page_icon="static/icon.png",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -15,7 +15,7 @@ def main():
     # Header
     col1, col2 = st.columns([8, 1], vertical_alignment="bottom")
     with col1:
-        st.markdown("# Wout's toolkit")
+        st.markdown("# Lead Optimization with Safety by Design Toolkit")
     with col2:
         exit_app = st.button("**SHUT DOWN APP**", width="stretch", type="primary")
         if exit_app:
