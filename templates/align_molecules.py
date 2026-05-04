@@ -428,7 +428,7 @@ def apply_coordinate_alignment(molecule: Chem.Mol, template: Chem.Mol,
             mol_conformer.SetAtomPosition(mol_idx, template_coords[tpl_idx])
 
 def optimize_molecule_geometry(molecule: Chem.Mol, fixed_atoms: List[int]) -> None:
-    """Optimize molecule geometry with constrained and unconstrained steps."""
+    """Optimize molecule geometry with constrained steps."""
     best_energy = float('inf')
     best_conf = None
     original_conf = Chem.Conformer(molecule.GetConformer())
