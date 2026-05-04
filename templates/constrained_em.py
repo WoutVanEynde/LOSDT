@@ -52,7 +52,6 @@ logger = setup_logging()
 DEFAULT_RESTRAINT_RADIUS = 0.6  # Distance in nm (6 Å = 0.6 nm)
 DEFAULT_RESTRAINT_STRENGTH = 1000000.0  # kJ/mol/nm² - very high to effectively freeze atoms
 DEFAULT_MINIMIZATION_STEPS = 0
-DEFAULT_ENERGY_REPORT_INTERVAL = 50
 DEFAULT_TEMPERATURE = 300  # Kelvin
 DEFAULT_TIMESTEP = 0.002  # picoseconds
 
@@ -142,6 +141,9 @@ def extract_ligands_from_pdb(pdb_path: Path, protonation: bool, ligand_residue_n
                 fix_oxygen_formal_charges(mol)
                 
                 formal_charge = Chem.GetFormalCharge(mol)
+                # FIX FORMAL CHARGES; reset formal charges to 0 before determining bonds, RDKit's function below can act up by incorrect "local" formal charges from pdb somehow.
+                for atom in mol.GetAtoms():
+                    atom.SetFormalCharge(0)
                 rdDetermineBonds.DetermineBonds(mol, charge=formal_charge, covFactor=1.15, useVdw=True) #covFactor was set to 1.15 as BCP would throw errors due to carbons being too close.
                 
                 if protonation is True:
@@ -150,8 +152,7 @@ def extract_ligands_from_pdb(pdb_path: Path, protonation: bool, ligand_residue_n
                     SMILES_df = pd.DataFrame([mol_smiles], columns=['Smiles'])
                     predicted_pkas, protonated_SMILES = predict(SMILES_df, pH=7, device='cpu')
                     protonated_smiles = protonated_SMILES[0]
-                    protonated = Chem.MolFromSmiles(protonated_smiles[0])
-                    fix_oxygen_formal_charges(protonated)
+                    protonated = Chem.MolFromSmiles(protonated_smiles)
                     # This worked best, assignbondsfromtemplate made explicit carbons resulting in radicals instead of hydrogens in some cases
                     from align_molecules import align_and_optimize
                     align_and_optimize(protonated, mol)
