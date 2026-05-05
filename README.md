@@ -1,3 +1,9 @@
+# *LOSDT*: Lead Optimization by Safety by Design Toolkit
+
+<p align="center">
+  <img width="200" src="./static/pipeline.png">
+</p>
+
 # Table of contents
 - [Introduction](#introduction)
 - [Installation and usage](#installation-and-usage)
