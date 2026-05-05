@@ -1,7 +1,7 @@
 # *LOSDT*: Lead Optimization by Safety by Design Toolkit
 
 <p align="center">
-  <img width="200" src="./static/pipeline.png">
+  <img src="./pipeline.png">
 </p>
 
 # Table of contents
