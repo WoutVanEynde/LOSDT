@@ -137,15 +137,15 @@ def extract_ligands_from_pdb(pdb_path: Path, protonation: bool, ligand_residue_n
                 if mol is None:
                     raise ValueError(f"Could not parse ligand {ligand_name} instance {idx+1}")
                 
-                 # FIX OXYGEN FORMAL CHARGES, used to be problem in NAD+ that was deprotonated.
-                fix_oxygen_formal_charges(mol)
-                
-                formal_charge = Chem.GetFormalCharge(mol)
-                # FIX FORMAL CHARGES; reset formal charges to 0 before determining bonds, RDKit's function below can act up by incorrect "local" formal charges from pdb somehow.
-                for atom in mol.GetAtoms():
-                    atom.SetFormalCharge(0)
-                rdDetermineBonds.DetermineBonds(mol, charge=formal_charge, covFactor=1.15, useVdw=True) #covFactor was set to 1.15 as BCP would throw errors due to carbons being too close.
-                
+                try: # Sometimes it just crashes if read from PDB, this workaround does the trick in most cases.
+                    # FIX OXYGEN FORMAL CHARGES, used to be problem in NAD+ that was deprotonated.
+                    fix_oxygen_formal_charges(mol)
+                    formal_charge = Chem.GetFormalCharge(mol)
+                    rdDetermineBonds.DetermineBonds(mol, charge=formal_charge, covFactor=1.15, useVdw=True) #covFactor was set to 1.15 as BCP would throw errors due to carbons being too close.
+
+                except Exception:
+                    mol = Chem.MolFromPDBFile(str(temp_ligand_path), removeHs=False, sanitize=False)
+
                 if protonation is True:
                     mol_noh = Chem.RemoveAllHs(mol)
                     mol_smiles = Chem.MolToSmiles(mol_noh)
