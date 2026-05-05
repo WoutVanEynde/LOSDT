@@ -33,11 +33,14 @@ from shepherd_score.container import Molecule, MoleculePair
 
 # Configure logging for multiprocessing
 def setup_logging():
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(processName)s - %(levelname)s - %(message)s'
-    )
-    return logging.getLogger(__name__)
+    logger = logging.getLogger(__name__)
+    if not logger.handlers:
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter('%(asctime)s - %(processName)s - %(levelname)s - %(message)s'))
+        logger.addHandler(handler)
+        logger.setLevel(logging.INFO)
+        logger.propagate = False
+    return logger
 
 logger = setup_logging()
 
