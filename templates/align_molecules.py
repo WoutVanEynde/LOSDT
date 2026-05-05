@@ -33,11 +33,14 @@ from shepherd_score.container import Molecule, MoleculePair
 
 # Configure logging for multiprocessing
 def setup_logging():
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(processName)s - %(levelname)s - %(message)s'
-    )
-    return logging.getLogger(__name__)
+    logger = logging.getLogger(__name__)
+    if not logger.handlers:
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter('%(asctime)s - %(processName)s - %(levelname)s - %(message)s'))
+        logger.addHandler(handler)
+        logger.setLevel(logging.INFO)
+        logger.propagate = False
+    return logger
 
 logger = setup_logging()
 
@@ -132,6 +135,7 @@ def save_molecule_to_sdf(molecule: Chem.Mol, output_file: Path) -> None:
     
     # Set as molecular property for SDF output
     molecule.SetProp("atom.dprop.PartialCharge", charges_str)
+    molecule.ClearProp("isotope")
     
     with Chem.SDWriter(str(output_file)) as writer:
         writer.write(molecule)
@@ -427,7 +431,7 @@ def apply_coordinate_alignment(molecule: Chem.Mol, template: Chem.Mol,
             mol_conformer.SetAtomPosition(mol_idx, template_coords[tpl_idx])
 
 def optimize_molecule_geometry(molecule: Chem.Mol, fixed_atoms: List[int]) -> None:
-    """Optimize molecule geometry with constrained and unconstrained steps."""
+    """Optimize molecule geometry with constrained steps."""
     best_energy = float('inf')
     best_conf = None
     original_conf = Chem.Conformer(molecule.GetConformer())

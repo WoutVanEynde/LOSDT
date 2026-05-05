@@ -17,12 +17,15 @@ import pandas as pd
 from pdbtools import pdb_selresname, pdb_delresname
 import io
 
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'static', 'third_party_software', 'pKaLearn', 'GNN')))
+from predict import predict
+
 # =============================================================================
 # PAGE CONFIGURATION
 # =============================================================================
 
 st.set_page_config(
-    page_title="LOSDT - Lead Optimization Tool",
+    page_title="LOSDT - Lead Optimization with Safety by Design Tool",
     page_icon="static/icon.png",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -49,6 +52,7 @@ class Config:
 
     # File naming conventions
     EXTRACTED_LIGAND_NAME = "0_extracted_ligand"
+    EXTRACTED_PROTONATED_LIGAND_NAME = "0_extracted_protonated_ligand"
     RESULTS_CSV_NAME = "results_with_admet.csv"
     ZIP_FILENAME = "structural_data.zip"
     RECEPTOR_NAME = "receptor"
@@ -247,7 +251,7 @@ def extract_smiles_from_pdb(pdb_file_path: Path, ligand_name: str) -> str:
 
 
 def extract_ligand_from_pdb(
-    pdb_file_path: Path, ligand_sdf_path: Path, ligand_pdb_path: Path, ligand_name: str
+    pdb_file_path: Path, ligand_sdf_path: Path, ligand_pdb_path: Path, ligand_name: str , protonation: bool, ligand_protonated_sdf_path: Path
 ) -> None:
     """
     Extract ligand from PDB file and save in both SDF and PDB formats.
@@ -274,6 +278,24 @@ def extract_ligand_from_pdb(
                     rwmol.GetBondBetweenAtoms(s_idx, o_idx).SetBondType(Chem.BondType.DOUBLE)
             Chem.SanitizeMol(rwmol)
             mol = rwmol.GetMol()
+
+        if protonation is True:
+            mol_noh = Chem.RemoveAllHs(mol)
+            mol_smiles = Chem.MolToSmiles(mol_noh)
+            SMILES_df = pd.DataFrame([mol_smiles], columns=['Smiles'])
+            predicted_pkas, protonated_SMILES = predict(SMILES_df, pH=7, device='cpu')
+            protonated_smiles = protonated_SMILES[0]
+            protonated = Chem.MolFromSmiles(protonated_smiles)
+            # This worked best, assignbondsfromtemplate made explicit carbons resulting in radicals instead of hydrogens in some cases
+            from align_molecules import align_and_optimize
+            align_and_optimize(protonated, mol)
+            protonated = Chem.AddHs(protonated, addCoords=True)
+            logger.info(f"Ligand {ligand_name} protonated with SMILES: {protonated_smiles}!")
+            mol = protonated
+
+            writer = Chem.SDWriter(str(ligand_protonated_sdf_path))
+            writer.write(protonated)
+            writer.close()
 
         writer = Chem.SDWriter(str(ligand_sdf_path))
         writer.write(mol)
@@ -473,16 +495,17 @@ def run_molecular_pipeline(
     # Step 2: 3D alignment and complex creation (if PDB provided)
     if pdb_file_path:
         ligand_sdf = session_folder / f"{Config.EXTRACTED_LIGAND_NAME}.sdf"
+        ligand_protonated_sdf = session_folder / f"{Config.EXTRACTED_PROTONATED_LIGAND_NAME}.sdf"
         ligand_pdb = session_folder / f"{Config.EXTRACTED_LIGAND_NAME}.pdb"
         receptor_pdb = session_folder / f"{Config.RECEPTOR_NAME}.pdb"
 
-        extract_ligand_from_pdb(pdb_file_path, ligand_sdf, ligand_pdb, ligand_name)
+        extract_ligand_from_pdb(pdb_file_path, ligand_sdf, ligand_pdb, ligand_name, protonation, ligand_protonated_sdf)
 
         # Align molecules
         aligned_dir = session_folder / Config.ALIGNED_MOLECULES_DIR
         if protonation is True:
             align_molecules(
-                ligand_sdf, aligned_dir, results_csv_path, "Protonated SMILES"
+                ligand_protonated_sdf, aligned_dir, results_csv_path, "Protonated SMILES"
             )
         else:
             align_molecules(ligand_sdf, aligned_dir, results_csv_path, "product_SMILES")
@@ -1093,7 +1116,7 @@ def display_results(session_folder: Path, smiles_string: str, has_pdb: bool):
                             st.slider(
                                 label="Select 3D structure",
                                 min_value=0,
-                                max_value=len(complex_files) - 1,
+                                max_value=len(complex_em_files) - 1,
                                 key=2,
                             )
                         ]
