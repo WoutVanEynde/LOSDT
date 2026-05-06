@@ -23,11 +23,11 @@ This repository contains the setup to perform lead optimization with bioisostere
 
 ## 1. Linux
 
-There are multiple options for Linux, including an executable file, a docker container or conda environment.
+There are two options for Linux, including a docker container or anaconda environment (recommended).
 
-For the executable, you can download and run it. For the docker container, please download the latest LOSDT image from dockerhub and run the container with: Optional settings > Host port > 8501.
+For the docker, please pull the latest LOSDT image from dockerhub and run the container.
 
-In case you want to use a conda environment, run:
+In case you want to use an anaconda environment, run:
 
 ```
 conda create --file environment.yml
