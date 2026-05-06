@@ -225,15 +225,21 @@ def display_results(session_folder: Path):
     em_complexes_dir = session_folder / Config.EM_COMPLEXES_DIR
     if em_complexes_dir.exists():
         st.warning("""Be cautious of pKaLearn predictions, they are not always accurate and should be used as a guide rather than absolute truth.""")
-        complex_em_files = sorted(list(em_complexes_dir.glob('*_minimized.pdb')))
-        if complex_em_files:
-            if len(complex_em_files) == 1:
-                current_structure = complex_em_files[0]
+        em_summary_path = em_complexes_dir / "em_summary.json"
+        import json
+        with open(em_summary_path) as _f:
+            em_entries = sorted(json.load(_f), key=lambda x: x["output_prefix"])
+
+        if em_entries:
+            idx = st.slider(label="Select 3D structure", min_value=0, max_value=len(em_entries) - 1) if len(em_entries) > 1 else 0
+            entry = em_entries[idx]
+            #st.caption(f"Structure: {entry['output_prefix']}")
+            if entry["success"]:
+                current_structure = em_complexes_dir / f"{entry['output_prefix']}_minimized.pdb"
+                st_molstar(current_structure, height=500, key=f"molstar_EM_{st.session_state.current_structure_index}")
             else:
-                current_structure = complex_em_files[st.slider(label="Select 3D structure", min_value=0, max_value=len(complex_em_files) - 1)]
-                    
-            # Display with Molstar
-            st_molstar(current_structure,height=500,key=f"molstar_EM_{st.session_state.current_structure_index}")
+                error_msg = entry.get("error")
+                st.warning(f"Energy minimization failed for **{entry['output_prefix']}**:\n\n`{error_msg}`")
         else:
             st.warning("No energy minimized complex structures available.") 
     
