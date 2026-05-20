@@ -1106,27 +1106,35 @@ def display_results(session_folder: Path, smiles_string: str, has_pdb: bool):
 
             with tab5:
                 if em_complexes_dir.exists():
-                    complex_em_files = sorted(
-                        list(em_complexes_dir.glob("aligned_*_minimized.pdb"))
-                    )
-
-                    if complex_em_files:
-                        # Display current structure
-                        current_structure = complex_em_files[
-                            st.slider(
-                                label="Select 3D structure",
-                                min_value=0,
-                                max_value=len(complex_em_files) - 1,
-                                key=2,
-                            )
-                        ]
-
-                        # Display with Molstar
-                        st_molstar(
-                            current_structure,
-                            height=500,
-                            key=f"molstar_EM_{st.session_state.current_structure_index}",
+                    em_summary_path = em_complexes_dir / "em_summary.json"
+                    import json
+                    with open(em_summary_path) as _f:
+                        em_entries = sorted(
+                            [e for e in json.load(_f) if e["output_prefix"] != "0_extracted_ligand_complex_final"],
+                            key=lambda x: x["output_prefix"],
                         )
+
+                    if em_entries:
+                        idx = st.slider(
+                            label="Select 3D structure",
+                            min_value=0,
+                            max_value=len(em_entries) - 1,
+                            key=2,
+                        )
+                        entry = em_entries[idx]
+                        #st.caption(f"Structure: {entry['output_prefix']}")
+                        if entry["success"]:
+                            current_structure = em_complexes_dir / f"{entry['output_prefix']}_minimized.pdb"
+                            st_molstar(
+                                current_structure,
+                                height=500,
+                                key=f"molstar_EM_{st.session_state.current_structure_index}",
+                            )
+                        else:
+                            error_msg = entry.get("error")
+                            st.warning(f"Energy minimization failed for **{entry['output_prefix']}**:\n\n`{error_msg}`")
+                    else:
+                        st.warning("No energy minimized complex structures available.")
                 else:
                     st.warning("No energy minimized complex structures available.")
 
