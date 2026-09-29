@@ -508,11 +508,10 @@ def run_molecular_pipeline(
         # Align molecules
         aligned_dir = session_folder / Config.ALIGNED_MOLECULES_DIR
         if protonation is True:
-            align_molecules(
-                ligand_protonated_sdf, aligned_dir, results_csv_path, "Protonated SMILES"
-            )
+            template_sdf, smiles_column = ligand_protonated_sdf, "Protonated SMILES"
         else:
-            align_molecules(ligand_sdf, aligned_dir, results_csv_path, "product_SMILES")
+            template_sdf, smiles_column = ligand_sdf, "product_SMILES"
+        align_molecules(template_sdf, aligned_dir, results_csv_path, smiles_column)
 
         # Create complexes from aligned molecules
         shutil.copy2(ligand_sdf, aligned_dir)
