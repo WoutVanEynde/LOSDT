@@ -870,6 +870,18 @@ def align_molecules_main(
         # Load data
         derivatives_df = pd.read_csv(derivatives_to_align)
         smiles_list = derivatives_df[SMILES_column].dropna().tolist()
+
+        # RDKit canonicalization, otherwise different SMILES writing style, e.g., MOE and RDKit
+        canonical = []
+        for smiles in smiles_list:
+            molecule = Chem.MolFromSmiles(smiles)
+            if molecule is None:
+                logger.warning(f"RDKit could not parse SMILES: {smiles}")
+                canonical.append(smiles)  # keep original; fails per-molecule downstream
+            else:
+                canonical.append(Chem.MolToSmiles(molecule))
+        smiles_list = canonical
+
         logger.info(f"Loaded {len(smiles_list)} SMILES for processing")
         
         # Load template
