@@ -933,6 +933,68 @@ def align_molecules_main(
         traceback.print_exc()
         raise
 
+def rescore_em_complexes_main(
+    aligned_molecules: str,
+    em_complexes: str,
+    derivatives_csv: str,
+    SMILES_column: str,
+    processes: Optional[int] = None
+) -> None:
+    """
+    Rescore the energy minimized ligand poses on volumetric shape and ESP similarity to the energy
+    minimized pose of the parent compound, which is the first row of the derivatives CSV.
+
+    Args:
+        aligned_molecules: Path to the directory with the aligned molecules
+        em_complexes: Path to the directory with the energy minimized complexes
+        derivatives_csv: Path to CSV file containing the aligned derivatives, updated with the new scores
+        SMILES_column: Name of the SMILES column used for the alignment
+        processes: Number of processes to use (None = auto-detect)
+    """
+    try:
+        # Load data; the aligned molecules are numbered by their position in the non-empty SMILES
+        derivatives_df = pd.read_csv(derivatives_csv)
+        smiles_series = derivatives_df[SMILES_column].dropna()
+
+        # Load EM ligand poses (None if alignment or EM failed)
+        em_ligands = []
+        for i in range(len(smiles_series)):
+            name = f"aligned_derivative_{i:03d}"
+            minimized_pdb = Path(em_complexes) / f"{name}_complex_final_minimized.pdb"
+            if not minimized_pdb.exists():
+                em_ligands.append(None)
+                continue
+            try:
+                em_ligands.append(load_em_ligand_pose(minimized_pdb, Path(aligned_molecules) / f"{name}.sdf"))
+            except Exception as e:
+                logger.error(f"Failed to load EM pose of {name}: {e}")
+                em_ligands.append(None)
+
+        logger.info(f"Loaded {sum(mol is not None for mol in em_ligands)} EM ligand poses for rescoring")
+
+        # The parent compound relaxed in the same pocket, so its EM pose is the reference
+        if not em_ligands or em_ligands[0] is None:
+            logger.warning("No energy minimized pose of the parent compound, skipping the rescoring")
+            return
+
+        _, scores = score_molecules_parallel(em_ligands, smiles_series.tolist(), em_ligands[0], processes)
+
+        # Update CSV with scores; no EM pose gives an empty score instead of 0.0
+        scores = [score if mol is not None else float("nan") for mol, score in zip(em_ligands, scores)]
+        derivatives_df['Volumetric shape and ESP similarity score after EM'] = pd.Series(
+            scores, index=smiles_series.index, dtype=float
+        )
+        derivatives_df.to_csv(derivatives_csv, index=False)
+        logger.info("Updated CSV with EM similarity scores")
+
+    except FileNotFoundError as e:
+        logger.error(f"File not found: {e}")
+        raise
+    except Exception as e:
+        logger.error(f"Error: {e}")
+        traceback.print_exc()
+        raise
+
 def main(args) -> int:
     """CLI wrapper for align_molecules_main."""
     try:
