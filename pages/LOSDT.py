@@ -293,6 +293,10 @@ def extract_ligand_from_pdb(
             logger.info(f"Ligand {ligand_name} protonated with SMILES: {protonated_smiles}!")
             mol = protonated
 
+            # remove isotopes that are added in during align_and_optimize
+            for atom in mol.GetAtoms():
+                atom.SetIsotope(0)
+
             writer = Chem.SDWriter(str(ligand_protonated_sdf_path))
             writer.write(protonated)
             writer.close()
