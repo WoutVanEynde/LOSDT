@@ -135,7 +135,8 @@ def save_molecule_to_sdf(molecule: Chem.Mol, output_file: Path) -> None:
     
     # Set as molecular property for SDF output
     molecule.SetProp("atom.dprop.PartialCharge", charges_str)
-    molecule.ClearProp("isotope")
+    for atom in molecule.GetAtoms():
+        atom.SetIsotope(0)
     
     with Chem.SDWriter(str(output_file)) as writer:
         writer.write(molecule)
