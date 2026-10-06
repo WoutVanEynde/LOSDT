@@ -168,6 +168,7 @@ def process_single_reaction(reaction_name: str,
                 product_data = process_product(product, input_fingerprint)
                 if product_data:
                     product_data["reaction_name"] = reaction_name
+                    product_data["smirks"] = smirks
                     results.append(product_data)
         
         logger.info(f"Generated {len(results)} valid products for reaction {reaction_name}")
