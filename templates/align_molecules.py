@@ -135,10 +135,40 @@ def save_molecule_to_sdf(molecule: Chem.Mol, output_file: Path) -> None:
     
     # Set as molecular property for SDF output
     molecule.SetProp("atom.dprop.PartialCharge", charges_str)
-    molecule.ClearProp("isotope")
+    for atom in molecule.GetAtoms():
+        atom.SetIsotope(0)
     
     with Chem.SDWriter(str(output_file)) as writer:
         writer.write(molecule)
+
+def load_em_ligand_pose(minimized_pdb: Path, aligned_sdf: Path, ligand_resname: str = "UNL") -> Chem.Mol:
+    """
+    Load the energy minimized ligand pose from a complex PDB file.
+
+    The PDB written after EM has no bond orders or formal charges, so the minimized coordinates are transferred
+    onto the aligned molecule. Complex creation and EM keep the atom order of the aligned SDF intact.
+    """
+    ligand = Chem.SDMolSupplier(str(aligned_sdf), removeHs=False)[0]
+    if ligand is None:
+        raise ValueError(f"Failed to load aligned molecule from {aligned_sdf}")
+
+    # The ligands are written as UNL residues by RDKit when creating the complexes
+    with open(minimized_pdb) as f:
+        ligand_block = "".join(line for line in f
+                               if line.startswith(("ATOM", "HETATM")) and line[17:20].strip() == ligand_resname)
+    em_ligand = Chem.MolFromPDBBlock(ligand_block, removeHs=False, sanitize=False, proximityBonding=False)
+    if em_ligand is None or em_ligand.GetNumAtoms() == 0:
+        raise ValueError(f"No {ligand_resname} ligand found in {minimized_pdb.name}")
+
+    # Coordinates can only be transferred if both contain the same atoms in the same order
+    ligand_elements = [atom.GetAtomicNum() for atom in ligand.GetAtoms()]
+    em_ligand_elements = [atom.GetAtomicNum() for atom in em_ligand.GetAtoms()]
+    if ligand_elements != em_ligand_elements:
+        raise ValueError(f"Ligand atoms in {minimized_pdb.name} ({len(em_ligand_elements)} atoms) "
+                         f"do not match {aligned_sdf.name} ({len(ligand_elements)} atoms)")
+
+    ligand.GetConformer().SetPositions(em_ligand.GetConformer().GetPositions())
+    return ligand
 
 # =============================================================================
 # MCS FINDING AND ALIGNMENT
@@ -870,6 +900,18 @@ def align_molecules_main(
         # Load data
         derivatives_df = pd.read_csv(derivatives_to_align)
         smiles_list = derivatives_df[SMILES_column].dropna().tolist()
+
+        # RDKit canonicalization, otherwise different SMILES writing style, e.g., MOE and RDKit
+        canonical = []
+        for smiles in smiles_list:
+            molecule = Chem.MolFromSmiles(smiles)
+            if molecule is None:
+                logger.warning(f"RDKit could not parse SMILES: {smiles}")
+                canonical.append(smiles)  # keep original; fails per-molecule downstream
+            else:
+                canonical.append(Chem.MolToSmiles(molecule))
+        smiles_list = canonical
+
         logger.info(f"Loaded {len(smiles_list)} SMILES for processing")
         
         # Load template
@@ -912,6 +954,68 @@ def align_molecules_main(
         
         logger.info("Alignment process completed successfully")
         
+    except FileNotFoundError as e:
+        logger.error(f"File not found: {e}")
+        raise
+    except Exception as e:
+        logger.error(f"Error: {e}")
+        traceback.print_exc()
+        raise
+
+def rescore_em_complexes_main(
+    aligned_molecules: str,
+    em_complexes: str,
+    derivatives_csv: str,
+    SMILES_column: str,
+    processes: Optional[int] = None
+) -> None:
+    """
+    Rescore the energy minimized ligand poses on volumetric shape and ESP similarity to the energy
+    minimized pose of the parent compound, which is the first row of the derivatives CSV.
+
+    Args:
+        aligned_molecules: Path to the directory with the aligned molecules
+        em_complexes: Path to the directory with the energy minimized complexes
+        derivatives_csv: Path to CSV file containing the aligned derivatives, updated with the new scores
+        SMILES_column: Name of the SMILES column used for the alignment
+        processes: Number of processes to use (None = auto-detect)
+    """
+    try:
+        # Load data; the aligned molecules are numbered by their position in the non-empty SMILES
+        derivatives_df = pd.read_csv(derivatives_csv)
+        smiles_series = derivatives_df[SMILES_column].dropna()
+
+        # Load EM ligand poses (None if alignment or EM failed)
+        em_ligands = []
+        for i in range(len(smiles_series)):
+            name = f"aligned_derivative_{i:03d}"
+            minimized_pdb = Path(em_complexes) / f"{name}_complex_final_minimized.pdb"
+            if not minimized_pdb.exists():
+                em_ligands.append(None)
+                continue
+            try:
+                em_ligands.append(load_em_ligand_pose(minimized_pdb, Path(aligned_molecules) / f"{name}.sdf"))
+            except Exception as e:
+                logger.error(f"Failed to load EM pose of {name}: {e}")
+                em_ligands.append(None)
+
+        logger.info(f"Loaded {sum(mol is not None for mol in em_ligands)} EM ligand poses for rescoring")
+
+        # The parent compound relaxed in the same pocket, so its EM pose is the reference
+        if not em_ligands or em_ligands[0] is None:
+            logger.warning("No energy minimized pose of the parent compound, skipping the rescoring")
+            return
+
+        _, scores = score_molecules_parallel(em_ligands, smiles_series.tolist(), em_ligands[0], processes)
+
+        # Update CSV with scores; no EM pose gives an empty score instead of 0.0
+        scores = [score if mol is not None else float("nan") for mol, score in zip(em_ligands, scores)]
+        derivatives_df['Volumetric shape and ESP similarity score after EM'] = pd.Series(
+            scores, index=smiles_series.index, dtype=float
+        )
+        derivatives_df.to_csv(derivatives_csv, index=False)
+        logger.info("Updated CSV with EM similarity scores")
+
     except FileNotFoundError as e:
         logger.error(f"File not found: {e}")
         raise

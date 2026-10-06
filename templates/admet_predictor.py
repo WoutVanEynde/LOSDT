@@ -168,6 +168,7 @@ def process_single_reaction(reaction_name: str,
                 product_data = process_product(product, input_fingerprint)
                 if product_data:
                     product_data["reaction_name"] = reaction_name
+                    product_data["smirks"] = smirks
                     results.append(product_data)
         
         logger.info(f"Generated {len(results)} valid products for reaction {reaction_name}")
@@ -365,7 +366,8 @@ def predict_admet_for_reactions(input_smiles: str,
     final_result = pd.concat([input_df, results_with_admet], ignore_index=True)
     
     # Get references in there
-    final_result = final_result.merge(reactions_df, on="reaction_name")
+    # Merge on smirks too: several rows share a reaction_name, merging on name alone duplicates products
+    final_result = final_result.merge(reactions_df, on=["reaction_name", "smirks"])
     final_result = final_result.drop(columns=['smirks'])
     final_result = pd.concat([input_df, final_result], ignore_index=True)
     final_result = final_result.rename(columns={'Smiles': 'product_SMILES'})
