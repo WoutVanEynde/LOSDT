@@ -405,6 +405,28 @@ def constrained_em_complexes(pdb_dir: Path, em_complexes_dir: Path) -> None:
         raise RuntimeError(f"Complex creation failed: {str(e)}")
 
 
+def rescore_em_complexes(
+    aligned_molecules_dir: Path,
+    em_complexes_dir: Path,
+    results_csv_path: Path,
+    SMILES_column: str,
+) -> None:
+    """Rescore energy minimized ligands on shape and ESP similarity using direct import."""
+    try:
+        ensure_templates_in_path()
+        from align_molecules import rescore_em_complexes_main
+
+        rescore_em_complexes_main(
+            aligned_molecules=str(aligned_molecules_dir),
+            em_complexes=str(em_complexes_dir),
+            derivatives_csv=str(results_csv_path),
+            SMILES_column=SMILES_column,
+            processes=None,
+        )
+    except Exception as e:
+        raise RuntimeError(f"EM rescoring failed: {str(e)}")
+
+
 def plot_radials(results_csv_path: Path, radial_plots_dir: Path) -> None:
     """Generate radial plots using direct import."""
     try:
@@ -522,6 +544,11 @@ def run_molecular_pipeline(
         if energy_minimization is True:
             em_complexes_dir = session_folder / Config.EM_COMPLEXES_DIR
             constrained_em_complexes(complexes_dir, em_complexes_dir)
+
+            # Rescore EM ligand poses against the EM pose of the input ligand
+            rescore_em_complexes(
+                aligned_dir, em_complexes_dir, results_csv_path, smiles_column
+            )
 
         # Create downloadable archive with both directories
         zip_path = session_folder / Config.ZIP_FILENAME
@@ -1062,9 +1089,14 @@ def display_results(session_folder: Path, smiles_string: str, has_pdb: bool):
                             max_value=100.0,
                         ),
                         "Volumetric shape and ESP similarity score": st.column_config.ProgressColumn(
-                            format="%.2f", max_value=1.0, pinned=True
+                            format="%.2f", max_value=1.0, pinned=False
                         )
                         if "Volumetric shape and ESP similarity score" in display_df
+                        else None,
+                        "Volumetric shape and ESP similarity score after EM": st.column_config.ProgressColumn(
+                            format="%.2f", max_value=1.0, pinned=True
+                        )
+                        if "Volumetric shape and ESP similarity score after EM" in display_df
                         else None,
                     },
                     width="stretch",
@@ -1169,7 +1201,7 @@ def display_results(session_folder: Path, smiles_string: str, has_pdb: bool):
             zip_path = session_folder / Config.ZIP_FILENAME
             if zip_path.exists():
                 st.markdown(
-                    "Download the structural data; Volumetric shape and ESP similarity score can be found in the last column of the ADMET results file."
+                    "Download the structural data; Volumetric shape and ESP similarity scores after alignment and, if performed, after energy minimization can be found in the last columns of the ADMET results file."
                 )
 
                 with open(zip_path, "rb") as f:

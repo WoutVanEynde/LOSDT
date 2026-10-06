@@ -141,6 +141,35 @@ def save_molecule_to_sdf(molecule: Chem.Mol, output_file: Path) -> None:
     with Chem.SDWriter(str(output_file)) as writer:
         writer.write(molecule)
 
+def load_em_ligand_pose(minimized_pdb: Path, aligned_sdf: Path, ligand_resname: str = "UNL") -> Chem.Mol:
+    """
+    Load the energy minimized ligand pose from a complex PDB file.
+
+    The PDB written after EM has no bond orders or formal charges, so the minimized coordinates are transferred
+    onto the aligned molecule. Complex creation and EM keep the atom order of the aligned SDF intact.
+    """
+    ligand = Chem.SDMolSupplier(str(aligned_sdf), removeHs=False)[0]
+    if ligand is None:
+        raise ValueError(f"Failed to load aligned molecule from {aligned_sdf}")
+
+    # The ligands are written as UNL residues by RDKit when creating the complexes
+    with open(minimized_pdb) as f:
+        ligand_block = "".join(line for line in f
+                               if line.startswith(("ATOM", "HETATM")) and line[17:20].strip() == ligand_resname)
+    em_ligand = Chem.MolFromPDBBlock(ligand_block, removeHs=False, sanitize=False, proximityBonding=False)
+    if em_ligand is None or em_ligand.GetNumAtoms() == 0:
+        raise ValueError(f"No {ligand_resname} ligand found in {minimized_pdb.name}")
+
+    # Coordinates can only be transferred if both contain the same atoms in the same order
+    ligand_elements = [atom.GetAtomicNum() for atom in ligand.GetAtoms()]
+    em_ligand_elements = [atom.GetAtomicNum() for atom in em_ligand.GetAtoms()]
+    if ligand_elements != em_ligand_elements:
+        raise ValueError(f"Ligand atoms in {minimized_pdb.name} ({len(em_ligand_elements)} atoms) "
+                         f"do not match {aligned_sdf.name} ({len(ligand_elements)} atoms)")
+
+    ligand.GetConformer().SetPositions(em_ligand.GetConformer().GetPositions())
+    return ligand
+
 # =============================================================================
 # MCS FINDING AND ALIGNMENT
 # =============================================================================

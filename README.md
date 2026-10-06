@@ -57,7 +57,7 @@ An OpenMM based energy minimization of complexes with a restrained environment, 
 
 An open-source tool for lead design and optimization, built on the principle of safety by design. This tool serves as both an ADMET optimizer and an idea generator for navigating beyond patent space. It integrates multiple features, including ADMET-AI and ShEPhERD-score, leveraging a comprehensive bioisosteric reaction library for functionality.
 
-Options for input are 2D compound or 3D ligand in bioactive confirmation inside protein complex. In case of the latter, the bioisosteric derivatives are automatically aligned to the input confirmation using the MCSAlign module. An option for protonation with pKaLearn at pH 7.0 and energy minimization with the CCM module are given.
+Options for input are 2D compound or 3D ligand in bioactive confirmation inside protein complex. In case of the latter, the bioisosteric derivatives are automatically aligned to the input confirmation using the MCSAlign module. An option for protonation with pKaLearn at pH 7.0 and energy minimization with the CCM module are given. After energy minimization, the derivatives are rescored on volumetric shape and electrostatic similarity to the energy minimized input ligand.
 
 ## 3. MCSAlign
 
