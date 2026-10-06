@@ -25,7 +25,7 @@ This repository contains the setup to perform lead optimization with bioisostere
 
 There are two options for Linux, including a docker container or anaconda environment (recommended).
 
-For the docker, pull the latest LOSDT image from dockerhub and run the container.
+For the docker, pull the latest LOSDT image from dockerhub and run the container. Some test examples are given in the tests folder.
 
 In case you want to use an anaconda environment, run:
 
@@ -39,7 +39,7 @@ streamlit run Home.py
 
 Install [docker.desktop](https://www.docker.com/products/docker-desktop/), search for the LOSDT image, pull it and run it with: Optional settings > Host port > 8501
 
-After, you can open the local URL link and use the application.
+After, you can open the local URL link and use the application. Some test examples are given in the tests folder.
 
 # Modules
 
