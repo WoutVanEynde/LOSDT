@@ -29,7 +29,7 @@ from rdkit.Chem import rdDetermineBonds
 from openff.toolkit.topology import Molecule
 from pdbfixer import PDBFixer
 from openmmforcefields.generators import SystemGenerator
-from openmm.app import PDBFile, Modeller, Simulation
+from openmm.app import PDBFile, Modeller, Simulation, ForceField
 from openmm import CustomExternalForce, LangevinMiddleIntegrator, unit
 from pdbtools import pdb_selresname
 
@@ -67,6 +67,14 @@ STANDARD_AMINO_ACIDS = {
 
 WATER_NAMES = {'HOH', 'WAT', 'TIP3', 'SOL', 'OPC'}
 
+FORCEFIELDS = ['amber19/protein.ff19SB.xml', 'amber19/DNA.OL21.xml', 'amber19/lipid21.xml', 'amber19/opc3.xml'] # IMPLICIT WATER MODEL ADDED https://github.com/openmm/openmm/issues/3364
+
+def forcefield_parametrized(topology) -> Set[int]:
+    """Indices of heteroatomic residues (e.g. ions) that have a template in FORCEFIELDS, these are not parameterized by OpenFF."""
+    unmatched = {residue.index for residue in ForceField(*FORCEFIELDS).getUnmatchedResidues(topology)}
+    return {residue.index for residue in topology.residues()
+            if residue.name not in STANDARD_AMINO_ACIDS | WATER_NAMES and residue.index not in unmatched}
+
 def fix_oxygen_formal_charges(mol):
     # FIX OXYGEN FORMAL CHARGES, used to be problem in NAD+ that was deprotonated.
     for atom in mol.GetAtoms():
@@ -94,6 +102,7 @@ def extract_ligands_from_pdb(pdb_path: Path, protonation: bool, ligand_residue_n
     """
     # Load PDB file to identify ligand residues and count instances
     pdb = PDBFile(str(pdb_path))
+    forcefield_residues = forcefield_parametrized(pdb.topology)
     
     # Identify ligand residues and their instances
     ligand_residues_map = {}  # {ligand_name: [(residue, chain_id, res_id), ...]}
@@ -106,7 +115,7 @@ def extract_ligands_from_pdb(pdb_path: Path, protonation: bool, ligand_residue_n
         target_names = None
     
     for residue in pdb.topology.residues():
-        if (residue.name not in WATER_NAMES and residue.name not in STANDARD_AMINO_ACIDS):
+        if (residue.name not in WATER_NAMES and residue.name not in STANDARD_AMINO_ACIDS and residue.index not in forcefield_residues):
             if target_names is None or residue.name in target_names:
                 if residue.name not in ligand_residues_map:
                     ligand_residues_map[residue.name] = []
@@ -357,6 +366,11 @@ def run_constrained_em_single(
         # Load PDB
         pdb = PDBFile(str(pdb_path))
 
+        # Set aside force field parameterized heteroatomic residues (e.g. ions), they are added back after PDBFixer
+        forcefield_residues = forcefield_parametrized(pdb.topology)
+        forcefield_hetero = Modeller(pdb.topology, pdb.positions)
+        forcefield_hetero.delete([r for r in forcefield_hetero.topology.residues() if r.index not in forcefield_residues])
+
         # Remove protein hydrogens using Modeller
         with tempfile.NamedTemporaryFile(mode='w', suffix='.pdb', delete=False) as tmp:
             PDBFile.writeFile(pdb.topology, pdb.positions, tmp)
@@ -397,6 +411,8 @@ def run_constrained_em_single(
         # Create modeller from fixed protein
         logging.getLogger("openff").setLevel(logging.ERROR) #Otherwise a lot of partial charge assigned notifications
         modeller = Modeller(fixer.topology, fixer.positions)
+        if forcefield_residues:
+            modeller.add(forcefield_hetero.topology, forcefield_hetero.positions)
         
         # ====================================================================
         # STEP 3: Add ligands back with proper parameters
@@ -426,7 +442,7 @@ def run_constrained_em_single(
             modeller.add(ligand_topology, ligand_positions)   
 
         system_generator = SystemGenerator(
-            forcefields=['amber19/protein.ff19SB.xml', 'amber19/DNA.OL21.xml', 'amber19/lipid21.xml', 'amber19/opc3.xml'], # IMPLICIT WATER MODEL ADDED https://github.com/openmm/openmm/issues/3364
+            forcefields=FORCEFIELDS,
             small_molecule_forcefield='openff-2.3.0',
             molecules=ligand_molecules,
             cache=str(output_dir / f'{output_prefix}_db.json')
