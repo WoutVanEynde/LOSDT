@@ -21,6 +21,7 @@ import json
 import argparse
 import pandas as pd
 from pathlib import Path
+from functools import lru_cache
 from typing import Optional, List, Set, Dict
 from multiprocessing import Pool, cpu_count
 import numpy as np
@@ -69,11 +70,35 @@ WATER_NAMES = {'HOH', 'WAT', 'TIP3', 'SOL', 'OPC'}
 
 FORCEFIELDS = ['amber19/protein.ff19SB.xml', 'amber19/DNA.OL21.xml', 'amber19/lipid21.xml', 'amber19/opc3.xml'] # IMPLICIT WATER MODEL ADDED https://github.com/openmm/openmm/issues/3364
 
+COORDINATING_METALS = {'Zn', 'Fe', 'Cu'}  # Coordinating cysteines are deprotonated (CYM), coordinating histidine nitrogens are not protonated
+MAX_METAL_SG = 0.28  # nm, https://onlinelibrary.wiley.com/iucr/doi/10.1107/S0907444900019168
+MAX_METAL_N = 0.28  # nm, histidine ND1/NE2 to metal
+
+@lru_cache(maxsize=1)
+def amber_forcefield() -> ForceField:
+    return ForceField(*FORCEFIELDS)
+
+def add_hydrogens(modeller: Modeller, pH: float = 7.0) -> None:
+    """Add hydrogens and minimize them with FORCEFIELDS (PDBFixer's default leaves X-H bonds at ~1.2 A and ignores metal coordination)"""
+    xyz = np.array(modeller.positions.value_in_unit(unit.nanometer))
+    metals = [a.index for a in modeller.topology.atoms() if a.element and a.element.symbol in COORDINATING_METALS]
+    coordinates = lambda atom, cutoff: bool(metals) and np.linalg.norm(xyz[metals] - xyz[atom.index], axis=1).min() < cutoff
+    variants = [None] * modeller.topology.getNumResidues()
+    for residue in modeller.topology.residues():
+        atoms = {atom.name: atom for atom in residue.atoms()}
+        if residue.name == 'CYS' and 'SG' in atoms and coordinates(atoms['SG'], MAX_METAL_SG):
+            variants[residue.index] = 'CYX'  # No HG, without a disulfide bond the CYM template matches
+        elif residue.name == 'HIS' and {'ND1', 'NE2'} <= set(atoms):
+            nd1, ne2 = coordinates(atoms['ND1'], MAX_METAL_N), coordinates(atoms['NE2'], MAX_METAL_N)
+            if nd1 != ne2:
+                variants[residue.index] = 'HIE' if nd1 else 'HID'  # Proton on the nitrogen that does not coordinate
+    modeller.addHydrogens(amber_forcefield(), pH=pH, variants=variants)
+
 def forcefield_parametrized(topology) -> Set[int]:
     """Indices of heteroatomic residues (e.g. ions) that have a template in FORCEFIELDS, these are not parameterized by OpenFF."""
-    unmatched = {residue.index for residue in ForceField(*FORCEFIELDS).getUnmatchedResidues(topology)}
-    return {residue.index for residue in topology.residues()
-            if residue.name not in STANDARD_AMINO_ACIDS | WATER_NAMES and residue.index not in unmatched}
+    unmatched = {residue.index for residue in amber_forcefield().getUnmatchedResidues(topology)}
+    return {residue.index for residue in topology.residues()  # UNX: unknown atoms (element X) are read as uranium
+            if residue.name not in STANDARD_AMINO_ACIDS | WATER_NAMES | {'UNX'} and residue.index not in unmatched}
 
 def fix_oxygen_formal_charges(mol):
     # FIX OXYGEN FORMAL CHARGES, used to be problem in NAD+ that was deprotonated.
@@ -406,13 +431,13 @@ def run_constrained_em_single(
             logger.info(f"Missing residues: {len(fixer.missingResidues)}")
         fixer.findMissingAtoms()
         fixer.addMissingAtoms()
-        fixer.addMissingHydrogens(7.0)
         
         # Create modeller from fixed protein
         logging.getLogger("openff").setLevel(logging.ERROR) #Otherwise a lot of partial charge assigned notifications
         modeller = Modeller(fixer.topology, fixer.positions)
         if forcefield_residues:
             modeller.add(forcefield_hetero.topology, forcefield_hetero.positions)
+        add_hydrogens(modeller) # With the ions present, so metal coordinating residues are protonated correctly
         
         # ====================================================================
         # STEP 3: Add ligands back with proper parameters
