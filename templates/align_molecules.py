@@ -18,6 +18,7 @@ import argparse
 import concurrent.futures
 from pathlib import Path
 from typing import List, Tuple, Dict, Optional
+from itertools import product
 from multiprocessing import Pool, cpu_count
 import pandas as pd
 from rdkit import Chem, RDLogger
@@ -52,6 +53,7 @@ class Config:
     """Configuration constants for molecular alignment."""
     TIMEOUT = 15  # seconds
     MCS_TIMEOUT = 90  # seconds
+    MAX_MCS_MATCHES = 200  # candidate substructure matches considered per molecule
     SHEPHERD_SURFACE_POINTS = 200
     SHEPHERD_LEARNING_RATE = 0.03
     SHEPHERD_MAX_STEPS = 0
@@ -174,6 +176,37 @@ def load_em_ligand_pose(minimized_pdb: Path, aligned_sdf: Path, ligand_resname: 
 # MCS FINDING AND ALIGNMENT
 # =============================================================================
 
+def _pick_consistent_matches(mol1: Chem.Mol, mol2: Chem.Mol, mcs: Chem.Mol) -> Tuple[List[int], List[int]]:
+    """
+    Pick the pair of substructure matches that actually correspond to each other.
+
+    FindMCS only hands back a SMARTS, so the atom to atom correspondence it found is lost
+    and each molecule has to be matched again. When the SMARTS fits a molecule in more
+    than one way, the first match on each side need not be the same part of the structure, which
+    is how a terminal methyl ends up paired with an alkyne carbon (4OO9). The isotope labels
+    written by isotope_assigner describe the environment of every atom, so the candidate
+    pair with the most matching labels is the one that corresponds.
+    """
+    matches1 = mol1.GetSubstructMatches(mcs, uniquify=True, maxMatches=Config.MAX_MCS_MATCHES)
+    matches2 = mol2.GetSubstructMatches(mcs, uniquify=True, maxMatches=Config.MAX_MCS_MATCHES)
+
+    if not matches1 or not matches2:
+        return [], []
+    if len(matches1) == 1 and len(matches2) == 1:
+        return list(matches1[0]), list(matches2[0])
+
+    isotopes1 = [atom.GetIsotope() for atom in mol1.GetAtoms()]
+    isotopes2 = [atom.GetIsotope() for atom in mol2.GetAtoms()]
+
+    best = (matches1[0], matches2[0])
+    best_score = -1
+    for match1, match2 in product(matches1, matches2):
+        score = sum(isotopes1[idx1] == isotopes2[idx2] for idx1, idx2 in zip(match1, match2))
+        if score > best_score:
+            best, best_score = (match1, match2), score
+
+    return list(best[0]), list(best[1])
+
 def find_mcs_with_params(mol1: Chem.Mol, mol2: Chem.Mol,
                         atom_compare=rdFMCS.AtomCompare.CompareAny, 
                         bond_compare=rdFMCS.BondCompare.CompareOrder,
@@ -192,8 +225,7 @@ def find_mcs_with_params(mol1: Chem.Mol, mol2: Chem.Mol,
             return None, [], []
         
         mcs = Chem.MolFromSmarts(mcs_result.smartsString)
-        mol1_match = mol1.GetSubstructMatch(mcs)
-        mol2_match = mol2.GetSubstructMatch(mcs)
+        mol1_match, mol2_match = _pick_consistent_matches(mol1, mol2, mcs)
         #print("SMARTS:", Chem.MolToSmarts(mcs))
         
         if Chem.MolToSmarts(mcs) == "[#1&!R]" or Chem.MolToSmarts(mcs) == "[0*]": #No single hydrogens or single atoms with mass (0 roughly corresponds to hydrogens)

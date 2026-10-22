@@ -214,12 +214,19 @@ def extract_ligand_with_pdbtools(pdb_file_path: Path, output_path: Path, ligand_
 
 def _convert_pdb_to_mol_with_bonds(pdb_file_path: Path) -> Chem.Mol:
     """
-    Convert PDB to RDKit molecule with proper bond determination.
+    Convert PDB to RDKit molecule with bond orders from the CCD, falling back to bond determination from connectivity.
     """
-    mol = Chem.MolFromPDBFile(str(pdb_file_path), removeHs=False, sanitize=True)
+    mol = Chem.MolFromPDBFile(str(pdb_file_path), removeHs=False, sanitize=False)
     if mol is None:
         raise ValueError("Could not parse ligand from PDB file")
 
+    ensure_templates_in_path()
+    from ccd_bonds import ccd_bond_orders
+    ccd_mol = ccd_bond_orders(mol)
+    if ccd_mol is not None:
+        return ccd_mol
+
+    Chem.SanitizeMol(mol)
     formal_charge = Chem.GetFormalCharge(mol)
     rdDetermineBonds.DetermineBonds(mol, charge=formal_charge)
 
@@ -461,11 +468,22 @@ def zip_files(file_paths: List[Path], zip_path: Path) -> None:
 # =============================================================================
 
 
+def fetch_rcsb_complex(pdb_id: str, ligand_name: str, pdb_file_path: Path) -> None:
+    """Download and prepare a protein-ligand complex from the RCSB PDB using direct import."""
+    try:
+        ensure_templates_in_path()
+        from rcsb_prep import prepare_rcsb_complex
+
+        prepare_rcsb_complex(pdb_id, ligand_name, pdb_file_path)
+    except Exception as e:
+        raise RuntimeError(f"RCSB complex preparation failed: {str(e)}")
+
+
 def process_input_data(
-    smiles_input: Optional[str], pdb_file, session_folder: Path, ligand_name: str
+    smiles_input: Optional[str], pdb_file, session_folder: Path, ligand_name: str, pdb_id: Optional[str] = None
 ) -> Tuple[str, Optional[Path]]:
     """
-    Validate and process input (PDB file and/or SMILES).
+    Validate and process input (PDB file, RCSB PDB ID and/or SMILES).
 
     Returns:
         Tuple of (validated_smiles, pdb_file_path_or_none)
@@ -481,6 +499,20 @@ def process_input_data(
         with open(pdb_file_path, "wb") as f:
             f.write(pdb_file.getbuffer())
 
+        # Uploaded complexes must be prepared, the CCD lookup would otherwise silently protonate the ligand
+        with open(pdb_file_path) as f:
+            ligand_elements = [(line[76:78].strip() or line[12:16].strip()[0]).upper() for line in f
+                               if line.startswith(("ATOM", "HETATM")) and line[17:20].strip() == ligand_name]
+        if ligand_elements and "H" not in ligand_elements:
+            raise ValueError(
+                f"Ligand {ligand_name} in the uploaded PDB has no hydrogens. Please upload a cleaned, protonated complex or use the RCSB PDB tab."
+            )
+
+    elif pdb_id:
+        pdb_file_path = session_folder / f"{pdb_id}.pdb"
+        fetch_rcsb_complex(pdb_id, ligand_name, pdb_file_path)
+
+    if pdb_file_path is not None:
         # Extract SMILES from PDB
         extracted_smiles = extract_smiles_from_pdb(pdb_file_path, ligand_name=ligand_name)
 
@@ -1275,7 +1307,8 @@ def main():
     # Input form (only shown when not showing results)
     if not st.session_state.results_ready:
         # Input tabs
-        input_tab1, input_tab2 = st.tabs(["PDB upload", "SMILES or molecule editor"])
+        energy_minimization_label = "Perform local energy minimization on the complexes. This drastically increases computational time and is not recommended on smaller PCs, instead use the CCM module afterwards on complexes of interest."
+        input_tab1, input_tab2, input_tab3 = st.tabs(["PDB upload", "SMILES or molecule editor", "RCSB PDB"])
 
         smiles_input = None
         pdb_file = None
@@ -1287,10 +1320,8 @@ def main():
             )
             ligand_name = st.text_input(
                 "Ligand name in PDB file", value="*", help="The residue name of the ligand in the PDB file. If your ligand has a specific residue name (e.g., 'LIG'), please enter it here."
-            )            
-            energy_minimization_button = st.checkbox(
-                "Perform local energy minimization on the complexes. This drastically increases computational time and is not recommended on smaller PCs, instead use the CCM module afterwards on complexes of interest."
             )
+            upload_energy_minimization = st.checkbox(energy_minimization_label, key="upload_energy_minimization")
 
         with input_tab2:
             st.info("""Click "Apply" to input the SMILES.""")
@@ -1308,6 +1339,20 @@ def main():
                 elif smiles_from_editor:
                     st.error("Invalid molecular structure")
 
+        with input_tab3:
+            st.info("""Fetch a complex from the RCSB PDB. Cofactors, ions and lipids parametrized by the force field are kept, crystallization artifacts are removed, non-canonical residues are reverted to canonical ones.""")
+            pdb_id = st.text_input("PDB ID", placeholder="e.g. 4OO9").strip().upper()
+            rcsb_ligand_name = st.text_input(
+                "Ligand of interest", placeholder="e.g. 2U8", help="The residue name (CCD code) of the ligand of interest in the PDB entry."
+            ).strip().upper()
+            rcsb_energy_minimization = st.checkbox(energy_minimization_label, key="rcsb_energy_minimization")
+
+        use_rcsb = pdb_file is None and bool(pdb_id)
+        if use_rcsb:
+            ligand_name = rcsb_ligand_name
+        energy_minimization_button = rcsb_energy_minimization if use_rcsb else upload_energy_minimization
+
+
         protonation_button = st.checkbox("Protonate the ligand using pKaLearn.")
 
         # Submission
@@ -1315,14 +1360,17 @@ def main():
         with col2:
             if st.button("**ANALYZE MOLECULE**", type="primary", width="stretch"):
                 # Validation
-                if not smiles_input and pdb_file is None:
+                if not smiles_input and pdb_file is None and not use_rcsb:
                     st.error(
-                        "Please provide either a SMILES string or upload a PDB file."
+                        "Please provide either a SMILES string, a PDB file or a PDB ID."
                     )
+                elif use_rcsb and not ligand_name:
+                    st.error("Please provide the ligand of interest for the PDB ID.")
                 elif (
                     smiles_input
                     and not is_valid_smiles(smiles_input)
                     and pdb_file is None
+                    and not use_rcsb
                 ):
                     st.error(
                         "Invalid SMILES notation. Please provide a valid SMILES or upload a PDB file."
@@ -1341,7 +1389,8 @@ def main():
 
                             # Process inputs
                             validated_smiles, pdb_path = process_input_data(
-                                smiles_input, pdb_file, session_folder, ligand_name=ligand_name
+                                smiles_input, pdb_file, session_folder, ligand_name=ligand_name,
+                                pdb_id=pdb_id if use_rcsb else None,
                             )
 
                             # Run pipeline

@@ -59,6 +59,8 @@ An open-source tool for lead design and optimization, built on the principle of 
 
 Options for input are 2D compound or 3D ligand in bioactive confirmation inside protein complex. In case of the latter, the bioisosteric derivatives are automatically aligned to the input confirmation using the MCSAlign module. An option for protonation with pKaLearn at pH 7.0 and energy minimization with the CCM module are given. After energy minimization, the derivatives are rescored on volumetric shape and electrostatic similarity to the energy minimized input ligand.
 
+An option to pull a complex straight from the PDB is included as well: missing protein atoms are rebuilt, the termini capped, hydrogens added and the binding site relaxed under restraints, after which the analysis continues from the prepared complex.
+
 ## 3. MCSAlign
 
 An RDKit based alignment tool using an iterative approach of finding Maximum Common Substructures between the 3D template and SMILES-derivatives, copy-pasting the common substructure and iteratively repeating on the leftover template.
