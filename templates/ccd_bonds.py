@@ -1,18 +1,51 @@
 """Bond orders of PDB heteroatomic residues from the wwPDB Chemical Component Dictionary (CCD)."""
 import pickle
 from functools import lru_cache
+from io import StringIO
 from pathlib import Path
 from typing import Optional
+from urllib.error import URLError
+from urllib.request import urlopen
 from rdkit import Chem
+from openmm.app.internal.pdbx.reader.PdbxReader import PdbxReader
 
 CCD_PATH = Path(__file__).resolve().parent.parent / 'static' / 'ccd' / 'components.pkl'
+CCD_URL = 'https://files.rcsb.org/ligands/view/{}.cif'
 BOND_TYPES = {1: Chem.BondType.SINGLE, 2: Chem.BondType.DOUBLE, 3: Chem.BondType.TRIPLE}
+BOND_ORDERS = {'SING': 1, 'DOUB': 2, 'TRIP': 3}
+# Placeholder codes for custom/unknown residues: their CCD entries do not describe the uploaded ligand
+PLACEHOLDER_CODES = {'UNL', 'UNK', 'UNX'}
 
 @lru_cache(maxsize=1)
 def _ccd() -> dict:
     # {residue name: (atom names, elements, formal charges, ((i, j, order), ...), smiles)}, heavy atoms only
     with open(CCD_PATH, 'rb') as f:
         return pickle.load(f)
+
+@lru_cache(maxsize=None)
+def _ccd_online(code: str) -> Optional[tuple]:
+    """Fetch a component missing from the static CCD snapshot, in the same format. None when unknown or offline."""
+    if not code.isalnum():
+        return None
+    try:
+        with urlopen(CCD_URL.format(code), timeout=10) as response:
+            text = response.read().decode()
+    except (URLError, OSError):
+        return None
+    data = []
+    PdbxReader(StringIO(text)).read(data)
+    atoms, bonds = data[0].getObj('chem_comp_atom'), data[0].getObj('chem_comp_bond')
+    if atoms is None:  # Placeholder components (UNL, UNX, ...) define no atoms
+        return None
+    heavy =[i for i in range(atoms.getRowCount()) if atoms.getValue('type_symbol', i) != 'H']
+    names = tuple(atoms.getValue('atom_id', i) for i in heavy)
+    elements = tuple(atoms.getValue('type_symbol', i) for i in heavy)
+    charges = tuple(int(atoms.getValue('charge', i)) if atoms.getValue('charge', i).lstrip('-').isdigit() else 0 for i in heavy)
+    index = {name: i for i, name in enumerate(names)}
+    pairs = [(bonds.getValue('atom_id_1', i), bonds.getValue('atom_id_2', i), bonds.getValue('value_order', i))
+             for i in range(bonds.getRowCount())] if bonds else []
+    bond_list = tuple((index[a], index[b], BOND_ORDERS[order]) for a, b, order in pairs if a in index and b in index)
+    return names, elements, charges, bond_list, ''
 
 def _charge_from_valence(atom: Chem.Atom) -> int:
     """Formal charge implied by the explicit valence of an atom whose hydrogens are all present."""
@@ -27,7 +60,10 @@ def ccd_bond_orders(mol: Chem.Mol) -> Optional[Chem.Mol]:
     Rebuild the heavy atom bonds of a single PDB residue (parsed with sanitize=False) from its CCD entry, matched on atom names. Formal charges come from the CCD when the residue has no hydrogens, otherwise from the valence, so a different protonation state is respected. Missing hydrogens are added with coordinates. Returns None when the residue is not in the CCD or its heavy atoms do not match the entry.
     """
     info = mol.GetAtomWithIdx(0).GetPDBResidueInfo()
-    entry = _ccd().get(info.GetResidueName().strip()) if info else None
+    code = info.GetResidueName().strip() if info else ''
+    if not code or code in PLACEHOLDER_CODES:
+        return None
+    entry = _ccd().get(code) or _ccd_online(code)  # Online for components newer than the static snapshot
     if entry is None:
         return None
     names, elements, charges, bonds, _ = entry

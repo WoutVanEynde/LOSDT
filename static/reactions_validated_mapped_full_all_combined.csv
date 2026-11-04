@@ -296,7 +296,7 @@ reaction_name,smirks,reference
 "{Alkyne to isoxazole}","[*:1]C#C[*:2]>>N1=C([*:1])C=C([*:2])O1","https://www.youtube.com/watch?v=diZia6_iiJ8&list=PLSvEKj6f3OHFeOeel4VZyHaLSPhVYFmec&index=17"
 "{Alkyne to oxazole}","[*:1]C#C[*:2]>>N1=C([*:1])OC([*:2])=C1","https://www.youtube.com/watch?v=diZia6_iiJ8&list=PLSvEKj6f3OHFeOeel4VZyHaLSPhVYFmec&index=17"
 "{Alkyne to 1,2,3-triazole}","[*:1]C#C[c,C:2]>>N1C([*:1])=CN([c,C:2])N=1","https://www.youtube.com/watch?v=diZia6_iiJ8&list=PLSvEKj6f3OHFeOeel4VZyHaLSPhVYFmec&index=17"
-"{Aromatic N to aromatic F}","[n;R1;!$([nH]):1]>>[c:1](F)","https://doi.org/10.1016/B978-0-12-409547-2.12290-5"
+"{Aromatic N to aromatic F}","[n;R1;!$([nH]);!D3:1]>>[c:1](F)","https://doi.org/10.1016/B978-0-12-409547-2.12290-5"
 "{1,2,4-triazole to pyridazine}","[*:1][n:3]1[c;R1:4][n;R1:5][n;R1:6][c:7]1([*:8])>>[*:1][c:3]1c[c:4][n:5][n:6][c:7]1([*:8])","https://www.sciencedirect.com/science/article/pii/S096808961630548X"
 "{1,2,4-triazole to pyrazine}","[*:1][n:3]1[c;R1:4][n;R1:5][n;R1:6][c:7]1([*:8])>>[*:1][c:3]1n[c:4][c:5][n:6][c:7]1([*:8])","https://www.sciencedirect.com/science/article/pii/S096808961630548X"
 "{1,2,4-triazole to 1,2,4-triazine}","[*:1][n:3]1[c;R1:4][n;R1:5][n;R1:6][c:7]1([*:8])>>[*:1][c:3]1n[c:4][n:5][n:6][c:7]1([*:8])","https://www.sciencedirect.com/science/article/pii/S0960894X12012176"
