@@ -195,6 +195,17 @@ def extract_ligand_with_pdbtools(pdb_file_path: Path, output_path: Path, ligand_
                 serial = int(line[6:11].strip())
                 ligand_atom_serials.add(serial)
 
+    if not ligand_atom_serials:
+        with open(pdb_file_path, "r") as in_f:
+            het_names = sorted({line[17:20].strip() for line in in_f
+                                if line.startswith("HETATM") and line[17:20].strip() not in ("HOH", "WAT")})
+        found = ", ".join(f"'{name}'" for name in het_names) if het_names else "none"
+        raise ValueError(
+            f"Ligand '{ligand_name}' was not found in the PDB file. "
+            f"Residue names of HETATM records in the file: {found}. "
+            f"Please enter the ligand's residue name exactly as it appears in the PDB file."
+        )
+
     # Second pass: write receptor without ligand and filter CONECT records
     with open(pdb_file_path, "r") as in_f, open(receptor_output_path, "w") as out_f:
         for line in pdb_delresname.run(in_f, ligand_resname):
